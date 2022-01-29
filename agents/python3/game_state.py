@@ -39,7 +39,7 @@ class GameState:
             x, y], "unit_id": unit_id}
         await self._send(packet)
 
-    async def _handle_messages(self, connection: WebSocketClientProtocol):
+    async def handle_messages(self, connection: WebSocketClientProtocol):
         while True:
             try:
                 raw_data = await connection.recv()

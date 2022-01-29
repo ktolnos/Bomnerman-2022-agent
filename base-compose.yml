@@ -24,6 +24,18 @@ services:
         volumes:
             - ./agents/python3:/app
 
+    rule-agent:
+        build:
+            context: python3
+            dockerfile: Dockerfile.rule
+
+    rule-agent-dev:
+        build:
+            context: python3
+            dockerfile: Dockerfile.rule.dev
+        volumes:
+            - ./python3:/app
+
     python3-fwd:
         build:
             context: agents/python3

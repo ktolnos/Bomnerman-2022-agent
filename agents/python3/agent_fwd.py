@@ -32,7 +32,7 @@ class Agent():
             self._client_fwd.connect())
 
         loop = asyncio.get_event_loop()
-        loop.create_task(self._client._handle_messages(client_connection))
+        loop.create_task(self._client.handle_messages(client_connection))
         loop.create_task(
             self._client_fwd._handle_messages(client_fwd_connection))
         loop.run_forever()

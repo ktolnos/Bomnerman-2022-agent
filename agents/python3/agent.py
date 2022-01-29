@@ -21,7 +21,7 @@ class Agent():
         loop = asyncio.get_event_loop()
         connection = loop.run_until_complete(self._client.connect())
         tasks = [
-            asyncio.ensure_future(self._client._handle_messages(connection)),
+            asyncio.ensure_future(self._client.handle_messages(connection)),
         ]
         loop.run_until_complete(asyncio.wait(tasks))
 
