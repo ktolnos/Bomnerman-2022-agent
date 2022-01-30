@@ -3,8 +3,12 @@ from typing import Union
 
 
 class Action:
+
+    def __init__(self, unit_id):
+        self.unit_id = unit_id
+
     async def send(self, client):
-        ...
+        pass
 
 
 class MoveAction(Action):
@@ -15,9 +19,9 @@ class MoveAction(Action):
     ALL = [UP, DOWN, LEFT, RIGHT]
 
     def __init__(self, unit_id, action=None):
+        super().__init__(unit_id)
         if action is None:
             action = random.choice(MoveAction.ALL)
-        self.unit_id = unit_id
         self.action = action
 
     async def send(self, client):
@@ -25,8 +29,6 @@ class MoveAction(Action):
 
 
 class BombAction(Action):
-    def __init__(self, unit_id):
-        self.unit_id = unit_id
 
     async def send(self, client):
         await client.send_bomb(self.unit_id)
@@ -34,7 +36,7 @@ class BombAction(Action):
 
 class DetonateBombAction(Action):
     def __init__(self, unit_id, bomb):
-        self.unit_id = unit_id
+        super().__init__(unit_id)
         self.bomb = bomb
 
     async def send(self, client):
@@ -43,8 +45,6 @@ class DetonateBombAction(Action):
 
 
 class DetonateFirstAction(Action):
-    def __init__(self, unit_id):
-        self.unit_id = unit_id
 
     async def send(self, client):
         bomb_coordinates = self._get_bomb_to_detonate(client)

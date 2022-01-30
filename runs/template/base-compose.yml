@@ -1,0 +1,24 @@
+version: "3"
+services:
+    game-server:
+        image: coderone.azurecr.io/game-server:1663
+        volumes:
+            - ./logs:/app/logs
+
+    agent:
+        build:
+            context: ../../../python3
+            dockerfile: Dockerfile
+
+    random-agent:
+        build:
+            context: ../../../python3
+            dockerfile: Dockerfile.random
+
+    rule-agent:
+        build:
+            context: ../../../python3
+            dockerfile: Dockerfile.rule
+
+    published-agent:
+        image: docker.io/opryzhek/bombermann

@@ -12,17 +12,22 @@ services:
             context: agents/go
             dockerfile: Dockerfile
 
-    python3-agent:
+    agent:
         build:
             context: agents/python3
             dockerfile: Dockerfile
 
-    python3-agent-dev:
+    agent-dev:
         build:
             context: agents/python3
             dockerfile: Dockerfile.dev
         volumes:
             - ./agents/python3:/app
+
+    random-agent:
+        build:
+            context: python3
+            dockerfile: Dockerfile.random
 
     rule-agent:
         build:
@@ -75,3 +80,9 @@ services:
         build:
             context: agents/rust
             dockerfile: Dockerfile
+
+    published-agent:
+        image: docker.io/opryzhek/bombermann
+
+    enemy-agent:
+        image: public.docker.cloudgamepad.com/gocoder/f439u384k4554etg-baseline

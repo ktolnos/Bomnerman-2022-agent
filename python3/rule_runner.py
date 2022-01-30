@@ -1,9 +1,9 @@
 from runner import Runner
-from rule_policy import Policy
+from rule_policy import RulePolicy
 
 
 def main():
-    Runner(Policy())
+    Runner(RulePolicy())
 
 
 if __name__ == "__main__":

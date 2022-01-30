@@ -1,0 +1,53 @@
+version: "3"
+services:
+    game-server:
+        extends:
+            file: base-compose.yml
+            service: game-server
+        ports:
+            - {{PORT}}:3000
+        environment:
+            - ADMIN_ROLE_ENABLED=1
+            - AGENT_ID_MAPPING=agentA,agentB
+            - INITIAL_AMMUNITION=3
+            - INITIAL_HP=3
+            - PRNG_SEED=1234
+            - SHUTDOWN_ON_GAME_END_ENABLED=1
+            - TELEMETRY_ENABLED=1
+            - TICK_RATE_HZ=30
+            - TRAINING_MODE_ENABLED=0
+            - WORLD_SEED=1234
+        networks:
+            - coderone-tournament
+
+   ###  Uncomment the following "agent-a" blocks to connect a second agent to the environment
+
+    agent-a:
+         extends:
+             file: base-compose.yml
+             # update next line with a service in base-compose.yml to change agent
+             service: published-agent
+         environment:
+             - GAME_CONNECTION_STRING=ws://game-server:3000/?role=agent&agentId=agentA&name=python3-agent-dev
+             - FWD_MODEL_CONNECTION_STRING=ws://fwd-server-a:6969/?role=admin
+         depends_on:
+             - game-server
+         networks:
+             - coderone-tournament
+
+    agent-b:
+        extends:
+            file: base-compose.yml
+            # update next line with a service in base-compose.yml to change agent
+            service: agent
+        environment:
+            - GAME_CONNECTION_STRING=ws://game-server:3000/?role=agent&agentId=agentB&name=python3-agent
+            - FWD_MODEL_CONNECTION_STRING=ws://fwd-server-b:6969/?role=admin
+        depends_on:
+            - game-server
+        networks:
+            - coderone-tournament
+        restart: on-failure
+
+networks:
+    coderone-tournament:

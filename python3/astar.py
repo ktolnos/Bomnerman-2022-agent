@@ -2,7 +2,7 @@ from typing import Dict, Iterator, List, Optional
 
 import numpy as np
 
-from utils import Point, PriorityQueue
+from utils import Point, PriorityQueue, get_neighbours
 
 
 class AStar:
@@ -17,36 +17,7 @@ class AStar:
         return abs(current_node.x - end.x) + abs(current_node.y - end.y)
 
     def get_neighbors(self, point: Point) -> Iterator[Point]:
-        x = point.x
-        y = point.y
-        neighbors = [
-            Point(x + 1, y),
-            Point(x - 1, y),
-            Point(x, y - 1),
-            Point(x, y + 1),
-        ]
-
-        if (x + y) % 2 == 0:  # to prevent ugly (diagonal) paths
-            neighbors.reverse()
-
-        size_x = self.grid.shape[0] - 1
-        size_y = self.grid.shape[1] - 1
-        # s = self.offset
-
-        def is_valid(p: Point) -> bool:
-            if p == self.end:
-                return True
-            if p.x < 0 or p.x >= size_x:
-                return False
-            if p.y < 0 or p.y >= size_y:
-                return False
-            # left = max(p.x - s, 0)
-            # right = min(p.x + s + 1, size_x)
-            # top = max(p.y - s, 0)
-            # bottom = min(p.y + s + 1, size_y)
-            return self.grid[p.x, p.y] == 0
-
-        return filter(is_valid, neighbors)
+        return get_neighbours(self.grid, point, include=self.end)
 
     def run(self) -> List[Point]:
         frontier = PriorityQueue()

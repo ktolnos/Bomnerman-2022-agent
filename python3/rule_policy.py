@@ -1,9 +1,10 @@
 import asyncio
+import math
 import random
 
-from actions import MoveAction, BombAction, DetonateBombAction
+from actions import MoveAction, BombAction, DetonateBombAction, Action
 from parser import Parser, owner_init_id
-from pathfinding import AStar
+from astar import AStar
 from utils import *
 
 
@@ -17,7 +18,7 @@ class PathProposal:
         return len(self.path) < len(other.path)
 
 
-class Policy:
+class RulePolicy:
 
     def __init__(self):
         self.busy = set()  # units that already made the move
@@ -31,6 +32,11 @@ class Policy:
         self.collect_power_ups()
         self.place_bombs()
         self.move_at_random_safe_spot()
+
+    def compute_map(self):
+        self.path_map = np.ones_like(self.parser.danger_map)
+        self.path_map[self.parser.walkable_map == 1] = math.inf
+        self.path_map
 
     def blow_up_enemies(self):
         for enemy in self.parser.enemy_units:
@@ -85,21 +91,19 @@ class Policy:
             if self.is_busy(uid(unit)):
                 continue
             pos = point(unit)
-            neighbors = AStar(self.parser.walkable_map, Point(0, 0), Point(0, 0), 0).get_neighbors(pos)
-            list_neighbours = list(neighbors)
-            if not list_neighbours:
-                continue
-            not_dangerous = []
-            not_potential_explosion = []
-            for n in list_neighbours:
-                if self.parser.dangerous_map[n.x, n.y] == 0:
-                    not_dangerous.append(n)
-                if self.parser.all_bomb_explosion_map[n.x, n.y] == 0:
-                    not_potential_explosion.append(n)
-            target_list = not_dangerous if not_dangerous \
-                else not_potential_explosion if not_potential_explosion \
-                else list_neighbours
-            target = random.choice(target_list)
+            neighbours = get_neighbours(grid=self.parser.walkable_map, center=pos, include_center=True)
+            min_danger_neighbours = []
+            min_danger = 100000
+            for neighbour in neighbours:
+                danger = self.parser.danger_map[neighbour.x, neighbour.y]
+                if danger == min_danger:
+                    min_danger_neighbours.append(neighbour)
+                if danger < min_danger:
+                    min_danger_neighbours.clear()
+                    min_danger_neighbours.append(neighbour)
+                    min_danger = danger
+
+            target = random.choice(min_danger_neighbours)
             action = self.plan_move_to_point(uid(unit), pos, target)
             self.execute_action(action)
 
@@ -111,6 +115,8 @@ class Policy:
         return self.plan_move_to_point(unit_id, curr, next_move)
 
     def plan_move_to_point(self, unit_id, curr_position, target_position):
+        if curr_position == target_position:
+            return Action(unit_id)
         action = MoveAction.UP
         if target_position.x > curr_position.x:
             action = MoveAction.RIGHT
