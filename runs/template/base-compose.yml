@@ -22,3 +22,7 @@ services:
 
     published-agent:
         image: docker.io/opryzhek/bombermann
+
+    enemy-agent:
+        image: public.docker.cloudgamepad.com/gocoder/f439u384k4554etg-baseline
+

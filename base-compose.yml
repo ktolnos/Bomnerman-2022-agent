@@ -82,7 +82,7 @@ services:
             dockerfile: Dockerfile
 
     published-agent:
-        image: docker.io/opryzhek/bombermann
+        image: docker.io/opryzhek/bombermann:simple-rule
 
     enemy-agent:
         image: public.docker.cloudgamepad.com/gocoder/f439u384k4554etg-baseline

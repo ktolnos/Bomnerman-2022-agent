@@ -55,6 +55,30 @@ class TestShortestPath(IsolatedAsyncioTestCase):
         self.assertEqual(path[-1], Point(3, 3))
         self.assertEqual(len(path), 7)
 
+    def test_in_safe_environment_goes_somewhere(self):
+        grid = np.array([
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ])
+        path = LeastCostSearch(grid, Point(0, 0), search_budget=20).run(10)
+        self.assertEqual(path[0], Point(0, 0))
+        self.assertEqual(path[-1], Point(3, 3))
+        self.assertEqual(len(path), 7)
+
+    def test_inf_is_wall(self):
+        grid = np.array([
+            [0, math.inf, math.inf, math.inf],
+            [0, 0, 0, math.inf],
+            [math.inf, math.inf, 0, math.inf],
+            [math.inf, math.inf, math.inf, math.inf],
+        ])
+        path = LeastCostSearch(grid, Point(0, 0), search_budget=20).run(10)
+        self.assertEqual(path[0], Point(0, 0))
+        self.assertEqual(path[-1], Point(2, 2))
+        self.assertEqual(len(path), 5)
+
     def test_shortest_path_does_not_go_to_the_safe_spot_through_danger(self):
         grid = np.array([
             [1, 1, 1, 1],
@@ -92,6 +116,29 @@ class TestShortestPath(IsolatedAsyncioTestCase):
         self.assertEqual(path[0], Point(0, 0))
         self.assertEqual(path[-1], Point(3, 3))
         self.assertEqual(len(path), 7)
+
+    def test_shortest_path_does_go_to_the_big_reward_through_danger(self):
+        inf = math.inf
+        grid = np.array(
+            [[inf, inf, inf, inf, inf, 0., inf, inf, inf, 0., 0., inf, 0., inf, inf],
+             [inf, inf, inf, inf, inf, 0., inf, 0., inf, 0., inf, inf, 0., inf, inf],
+             [0., inf, 0., inf, inf, inf, inf, 1., inf, 0.1, inf, inf, 0., inf, 0., ],
+             [0., inf, inf, inf, 0., 0., 0., inf, inf, inf, 0.1, 0., 0., inf, inf],
+             [0., inf, inf, 0., inf, 0., inf, 0., inf, inf, 0., inf, inf, inf, inf],
+             [inf, inf, inf, inf, 0., inf, inf, 0., 0., inf, 0., inf, inf, 0., inf],
+             [0., inf, inf, inf, 0., inf, 0., 0., 0., 0., 0., 0., inf, 0., 0., ],
+             [0., 0., 0., 0., inf, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., ],
+             [0., inf, inf, inf, 0., inf, 0., 0., 0., 0., 0., 0., inf, 0., 0., ],
+             [inf, inf, inf, inf, 0., inf, inf, 0., 0., inf, 0., inf, inf, 0., inf],
+             [0., inf, inf, 0., inf, 0., inf, 0., inf, 0., 0., inf, inf, inf, inf],
+             [0., inf, inf, inf, 0., 0., 0., inf, inf, 1., 0., 0., 0., inf, inf],
+             [0., inf, 0., inf, inf, inf, inf, inf, inf, inf, inf, inf, 0., inf, 0., ],
+             [inf, inf, inf, inf, inf, 0., inf, 0., inf, 1., inf, inf, 0., inf, inf],
+             [inf, inf, inf, inf, inf, 0., inf, 0., inf, inf, 0., inf, 0., inf, inf], ],
+        )
+        path = LeastCostSearch(grid, Point(3, 11), search_budget=100).run(horizon=5)
+
+
 
 
 if __name__ == '__main__':

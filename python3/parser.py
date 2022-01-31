@@ -102,8 +102,6 @@ class Parser:
             if e_type == "x":
                 draw_bomb_explosion(self.danger_map, entity, rad=2, value=endgame_fire_danger)
 
-        print(self.danger_map)
-
 
 def draw_bomb_explosion_with_obj(arr, obj_arr, bomb, value=1.):
     x, y = bomb.get("x"), bomb.get("y")

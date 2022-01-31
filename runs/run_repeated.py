@@ -9,7 +9,7 @@ def run_command(run_id: int):
     suffix = "{0}-{1}".format(run_id, time.time())
     dir_name = "out/run-" + suffix
     if run_id % 6 == 0:
-        subprocess.Popen("docker network prune -f", shell=True).wait()
+        subprocess.Popen("docker network prune", shell=True).wait()
     subprocess.Popen("mkdir -p " + dir_name +
                      " && cp template/base-compose.yml " + dir_name + "/base-compose.yml" +
                      " && cp template/docker-compose.yml " + dir_name + "/docker-compose.yml"
@@ -48,6 +48,8 @@ def main():
             template = '"winning_agent_id":"'
             idx = filedata.find(template)
             won = filedata[idx + len(template):idx + len(template) + 1]
+            if won == 'b':
+                print("Lost run " + filename)
             score[won] += 1
     print(score)
 
