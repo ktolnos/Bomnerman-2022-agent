@@ -1,6 +1,7 @@
 import heapq
+import math
 from dataclasses import dataclass
-from typing import Any, List, Tuple, Iterator
+from typing import Any, List, Tuple, Iterator, NamedTuple
 
 import numpy as np
 
@@ -18,17 +19,18 @@ def uid(unit):
     return unit.get("unit_id")
 
 
-@dataclass(frozen=True)
-class Point:
+class Point(NamedTuple):
     x: int
     y: int
+
+    def point(self):
+        return self.x, self.y
 
     def __lt__(self, other):
         return self.x < other.x
 
 
-def get_neighbours(grid: np.array, center: Point, include: Point = None, include_center=False,
-                   predicate=lambda x: x == 0) -> Iterator[Point]:
+def get_neighbours(grid: np.array, center: Point, include: Point = None, include_center=False) -> Iterator[Point]:
     x = center.x
     y = center.y
     neighbors = [
@@ -51,7 +53,7 @@ def get_neighbours(grid: np.array, center: Point, include: Point = None, include
             return False
         if p.y < 0 or p.y > size_y:
             return False
-        return predicate(grid[p.x, p.y])
+        return grid[p.x, p.y] != math.inf
 
     result = filter(is_valid, neighbors)
     if include_center:

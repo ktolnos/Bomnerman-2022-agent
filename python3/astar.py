@@ -6,8 +6,7 @@ from utils import Point, PriorityQueue, get_neighbours
 
 
 class AStar:
-    def __init__(self, grid: np.ndarray, start: Point, end: Point, offset: int):
-        self.offset = offset
+    def __init__(self, grid: np.ndarray, start: Point, end: Point):
         self.grid = grid
         self.start = start
         self.end = end
@@ -19,13 +18,13 @@ class AStar:
     def get_neighbors(self, point: Point) -> Iterator[Point]:
         return get_neighbours(self.grid, point, include=self.end)
 
-    def run(self) -> List[Point]:
+    def run(self) -> (List[Point], float):
         frontier = PriorityQueue()
         frontier.put(self.start, 0)
         came_from: Dict[Point, Optional[Point]] = dict()
         cost_so_far: Dict[Point, float] = dict()
         came_from[self.start] = None
-        cost_so_far[self.start] = 0
+        cost_so_far[self.start] = self.grid[self.start.x, self.start.y]
 
         while not frontier.empty():
             current: Point = frontier.get()
@@ -34,7 +33,7 @@ class AStar:
                 break
 
             for neighbor in self.get_neighbors(current):
-                new_cost = cost_so_far[current] + 1
+                new_cost = cost_so_far[current] + self.grid[neighbor.x, neighbor.y]
                 if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
                     cost_so_far[neighbor] = new_cost
                     priority = new_cost + self.h_score(neighbor, self.end)
@@ -48,4 +47,4 @@ class AStar:
             node = came_from[node]
 
         path.reverse()
-        return path
+        return path, cost_so_far[self.end]

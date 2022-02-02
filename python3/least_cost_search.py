@@ -8,13 +8,14 @@ from utils import Point, PriorityQueue, get_neighbours
 
 class LeastCostSearch:
 
-    def __init__(self, grid: np.ndarray, start: Point, search_budget: int = 100):
+    def __init__(self, grid: np.ndarray, start: Point, exclude_points=set(), search_budget: int = 100):
         self.grid = grid
         self.start = start
         self.search_budget = search_budget
+        self.exclude_points = exclude_points
 
     def get_neighbors(self, point: Point) -> Iterator[Point]:
-        return get_neighbours(self.grid, point, predicate=lambda x: x != math.inf)
+        return get_neighbours(self.grid, point)
 
     def run(self, horizon: int) -> List[Point]:
         frontier = PriorityQueue()
@@ -47,6 +48,8 @@ class LeastCostSearch:
         min_cost = math.inf
         min_cost_point = None
         for p, length in path_len.items():
+            if p in self.exclude_points:
+                continue
             p_stay_cost = self.grid[p.x, p.y]
             p_cost = cost_so_far[p] + p_stay_cost + max(0, p_stay_cost * (horizon - length - 1))
             min_cost_path_len = -1 if min_cost_point is None else path_len[min_cost_point]

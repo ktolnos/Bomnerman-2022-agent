@@ -10,13 +10,16 @@ services:
             - ADMIN_ROLE_ENABLED=1
             - AGENT_ID_MAPPING=agentA,agentB
             - INITIAL_AMMUNITION=3
+            - FIRE_SPAWN_INTERVAL_TICKS=2
+            - GAME_DURATION_TICKS=300
+            - GAME_START_DELAY_MS=500
             - INITIAL_HP=3
             - PRNG_SEED=1234
             - SHUTDOWN_ON_GAME_END_ENABLED=1
             - TELEMETRY_ENABLED=1
             - TICK_RATE_HZ=30
             - TRAINING_MODE_ENABLED=0
-            - WORLD_SEED=1234
+#            - WORLD_SEED=1234
         networks:
             - coderone-tournament
 

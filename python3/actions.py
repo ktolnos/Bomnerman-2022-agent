@@ -10,6 +10,9 @@ class Action:
     async def send(self, client):
         pass
 
+    def __str__(self):
+        return str(self.__class__) + " " + self.unit_id
+
 
 class MoveAction(Action):
     UP = "up"
@@ -26,6 +29,9 @@ class MoveAction(Action):
 
     async def send(self, client):
         await client.send_move(self.action, self.unit_id)
+
+    def __str__(self):
+        return super().__str__() + " " + self.action
 
 
 class BombAction(Action):
