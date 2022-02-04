@@ -1,6 +1,8 @@
 import random
 from typing import Union
 
+from parser import Bomb
+
 
 class Action:
 
@@ -41,12 +43,12 @@ class BombAction(Action):
 
 
 class DetonateBombAction(Action):
-    def __init__(self, unit_id, bomb):
+    def __init__(self, unit_id, bomb: Bomb):
         super().__init__(unit_id)
         self.bomb = bomb
 
     async def send(self, client):
-        x, y = self.bomb.get("x"), self.bomb.get("y")
+        x, y = self.bomb.pos
         await client.send_detonate(x, y, self.unit_id)
 
 
@@ -59,7 +61,7 @@ class DetonateFirstAction(Action):
             await client.send_detonate(x, y, self.unit_id)
 
     def _get_bomb_to_detonate(self, client) -> Union[int, int] or None:
-        entities = client._state.get("entities")
+        entities = client.state.get("entities")
         bombs = list(filter(lambda entity: entity.get(
             "unit_id") == self.unit_id and entity.get("type") == "b", entities))
         bomb = next(iter(bombs or []), None)

@@ -1,9 +1,10 @@
-from typing import Union
-from forward_model import ForwardModel
-from game_state import GameState
 import asyncio
 import os
 import random
+from typing import Union
+
+from forward_model import ForwardModel
+from game_state import GameState
 
 fwd_model_uri = os.environ.get(
     "FWD_MODEL_CONNECTION_STRING") or "ws://127.0.0.1:6969/?role=admin"
@@ -39,7 +40,7 @@ class Agent():
 
     def _get_bomb_to_detonate(self, game_state) -> Union[int, int] or None:
         agent_number = game_state.get("connection").get("agent_number")
-        entities = self._client._state.get("entities")
+        entities = self._client.state.get("entities")
         bombs = list(filter(lambda entity: entity.get(
             "owner") == agent_number and entity.get("type") == "b", entities))
         bomb = next(iter(bombs or []), None)
@@ -73,7 +74,7 @@ class Agent():
                 "agent_number": 1,
             }
         ]
-        await self._client_fwd.send_next_state(1, self._client._state, actions)
+        await self._client_fwd.send_next_state(1, self._client.state, actions)
 
     def generate_random_action(self):
         actions_length = len(actions)

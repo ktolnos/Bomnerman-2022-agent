@@ -1,9 +1,11 @@
-import unittest
-from game_state import GameState
-from unittest import IsolatedAsyncioTestCase
-from jsonschema import validate
 import copy
 import json
+import unittest
+from unittest import IsolatedAsyncioTestCase
+
+from jsonschema import validate
+
+from game_state import GameState
 
 
 def copy_object(data):
@@ -67,14 +69,14 @@ class TestGameState(IsolatedAsyncioTestCase):
                 "definitions").get("ValidServerPacket"))
 
     async def test_initial_game_state_constructor(self):
-        self.assertTrue(self.client._state == None)
+        self.assertTrue(self.client.state == None)
         self.assertTrue(self.client._connection_string == "")
         self.assertTrue(self.client._tick_callback == None)
 
     async def test_on_game_state_payload(self):
         await self.client._on_data(mock_state_packet)
         expected = copy_object(mock_state)
-        self.assertEqual(self.client._state, expected)
+        self.assertEqual(self.client.state, expected)
 
     async def test_on_game_entity_spawn_packet(self):
         await self.client._on_data(copy_object(mock_state_packet))
@@ -82,14 +84,14 @@ class TestGameState(IsolatedAsyncioTestCase):
         expected = copy_object(mock_state)
         expected["entities"].append(
             {"created": 22, "x": 7, "y": 3, "type": "a", "expires": 62, "hp": 1})
-        self.assert_object_equal(self.client._state, expected)
+        self.assert_object_equal(self.client.state, expected)
 
     async def test_on_game_entity_expired_packet(self):
         await self.client._on_data(copy_object(mock_state_packet))
         await self.client._on_data(copy_object(mock_tick_spawn_packet))
         await self.client._on_data(copy_object(mock_tick_expired_packet))
         expected = copy_object(mock_state)
-        self.assert_object_equal(self.client._state, expected)
+        self.assert_object_equal(self.client.state, expected)
 
     async def test_on_unit_state_packet(self):
         await self.client._on_data(copy_object(mock_state_packet))
@@ -97,7 +99,7 @@ class TestGameState(IsolatedAsyncioTestCase):
         expected = copy_object(mock_state)
         expected["unit_state"]["c"] = mock_unit_state_payload
         self.assert_object_equal(
-            self.client._state, expected)
+            self.client.state, expected)
 
     async def test_on_unit_move_packet(self):
         await self.client._on_data(copy_object(mock_state_packet))
@@ -105,7 +107,7 @@ class TestGameState(IsolatedAsyncioTestCase):
         expected = copy_object(mock_state)
         expected["unit_state"]["c"]["coordinates"] = [4, 10]
         self.assert_object_equal(
-            self.client._state, expected)
+            self.client.state, expected)
 
 
 if __name__ == '__main__':

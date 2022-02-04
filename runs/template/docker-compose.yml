@@ -7,14 +7,13 @@ services:
         ports:
             - {{PORT}}:3000
         environment:
-            - ADMIN_ROLE_ENABLED=1
+            - ADMIN_ROLE_ENABLED=0
             - AGENT_ID_MAPPING=agentA,agentB
             - INITIAL_AMMUNITION=3
             - FIRE_SPAWN_INTERVAL_TICKS=2
             - GAME_DURATION_TICKS=300
             - GAME_START_DELAY_MS=500
             - INITIAL_HP=3
-            - PRNG_SEED=1234
             - SHUTDOWN_ON_GAME_END_ENABLED=1
             - TELEMETRY_ENABLED=1
             - TICK_RATE_HZ=30
@@ -37,6 +36,11 @@ services:
              - game-server
          networks:
              - coderone-tournament
+         deploy:
+             resources:
+                 limits:
+                     cpus: '2'
+                     memory: 1024m
 
     agent-b:
         extends:
@@ -51,6 +55,10 @@ services:
         networks:
             - coderone-tournament
         restart: on-failure
-
+        deploy:
+            resources:
+                limits:
+                    cpus: '2'
+                    memory: 2048m
 networks:
     coderone-tournament:

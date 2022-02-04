@@ -1,8 +1,9 @@
+import math
 from typing import Dict, Iterator, List, Optional
 
 import numpy as np
 
-from utils import Point, PriorityQueue, get_neighbours
+from utils import Point, PriorityQueue, get_neighbours, manhattan_distance
 
 
 class AStar:
@@ -13,7 +14,7 @@ class AStar:
 
     @staticmethod
     def h_score(current_node, end):
-        return abs(current_node.x - end.x) + abs(current_node.y - end.y)
+        return manhattan_distance(current_node, end)
 
     def get_neighbors(self, point: Point) -> Iterator[Point]:
         return get_neighbours(self.grid, point, include=self.end)
@@ -24,7 +25,7 @@ class AStar:
         came_from: Dict[Point, Optional[Point]] = dict()
         cost_so_far: Dict[Point, float] = dict()
         came_from[self.start] = None
-        cost_so_far[self.start] = self.grid[self.start.x, self.start.y]
+        cost_so_far[self.start] = self.grid[self.start]
 
         while not frontier.empty():
             current: Point = frontier.get()
@@ -33,7 +34,7 @@ class AStar:
                 break
 
             for neighbor in self.get_neighbors(current):
-                new_cost = cost_so_far[current] + self.grid[neighbor.x, neighbor.y]
+                new_cost = cost_so_far[current] + self.grid[neighbor]
                 if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
                     cost_so_far[neighbor] = new_cost
                     priority = new_cost + self.h_score(neighbor, self.end)
@@ -47,4 +48,5 @@ class AStar:
             node = came_from[node]
 
         path.reverse()
-        return path, cost_so_far[self.end]
+        cost = cost_so_far[self.end] if self.end in cost_so_far else math.inf
+        return path, cost

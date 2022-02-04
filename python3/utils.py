@@ -19,6 +19,10 @@ def uid(unit):
     return unit.get("unit_id")
 
 
+def manhattan_distance(p1, p2):
+    return abs(p1.x - p2.x) + abs(p1.y - p2.y)
+
+
 class Point(NamedTuple):
     x: int
     y: int

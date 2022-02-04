@@ -39,6 +39,7 @@ class Runner:
         print("RUNNER: Tick {tick}".format(tick=tick_number))
         if self.future and not self.future.done():
             print("RUNNER: Cancelled prev in thread pull for tick {}".format(tick_number))
+            self._policy.last_was_cancelled = True
             self.future.cancel()
         self.future = self._pool.submit(self._policy.execute_actions, tick_number, game_state)
         self.future.add_done_callback(worker_callbacks)

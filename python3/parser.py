@@ -1,28 +1,31 @@
-import math
-
 from utils import *
 
-walkable_entities = {"a", "bp"}
-power_ups = walkable_entities
-owner_init_id = "unit_id"
+owner_unit_id = "unit_id"
 
-endgame_fire_start_danger = 2.0
+endgame_fire_start_danger = 3.0
 endgame_fire_end_danger = 0.0  # danger of the endgame fire in the center
-endgame_fire_base_multiplier = 0.1
+endgame_fire_base_multiplier = 0.01
 endgame_fire_endgame_multiplier_per_fire = 0.02
+endgame_fire_center_discount_mass = -0.1
+endgame_fire_center_discount = -0.2 / 3  # gets multiplied by HP.
 
-my_bomb_starting_danger = 3
-enemy_bomb_starting_danger = 10
-bomb_end_danger_ticks = 10
-bomb_end_danger_max = 15
+my_bomb_starting_danger = 5
+enemy_bomb_starting_danger = 140
+bomb_end_danger_ticks = 5
+bomb_end_danger_max = 150
 
-close_cell_danger = 1
+close_cell_danger = 0.2
 
 bomb_arming_ticks = 5
-power_up_discount = 0.2
-explosion_danger = 1000
+power_up_discount = -0.3
+close_enemy_discount = -0.2
+close_to_center_enemy_discount = -2
+center_occupied_ammo_discount = -2
+explosion_danger = 100000
+stand_on_bomb_danger = 999
 
-search_budget = 50
+search_budget_big = 50
+search_budget_small = 25
 search_horizon = 30
 
 
@@ -31,20 +34,29 @@ class Unit:
     id: str
     pos: Point
     bombs: int
+    hp: int
     blast_diameter: int
+
+
+@dataclass(frozen=True)
+class Bomb:
+    pos: Point
+    blast_diameter: int
+    owner_unit_id: str
+
 
 class Parser:
 
     def __init__(self, tick_number, game_state, calculate_wall_map=False):
         w = game_state.get("world").get("width")
         h = game_state.get("world").get("height")
-
+        self.w = w
+        self.h = h
         self.center = Point(w // 2, h // 2)
         self.walkable_map = np.zeros((w, h))
         self.cell_occupation_danger_map = np.zeros((w, h))
         self.my_bomb_explosion_map = np.zeros((w, h))
         self.my_bomb_explosion_map_objects = [[None for i in range(h)] for j in range(w)]
-        self.entities_map = [[None for i in range(h)] for j in range(w)]
         self.all_bomb_explosion_map = np.zeros((w, h))
         self.danger_map = np.zeros((w, h))
         self.power_ups = []
@@ -79,8 +91,7 @@ class Parser:
                 self.parse_unit(unit_id, self.enemy_units, self.enemy_unit_ids)
         for unit in self.enemy_units:
             self.walkable_map[unit.pos] = math.inf
-            draw_cross(self.cell_occupation_danger_map, unit.pos.x, unit.pos.y, rad=1, value=close_cell_danger)
-
+        self.my_units.sort(key=lambda u: u.hp, reverse=True)
         # ====== process entities =====
 
         entities = game_state.get("entities")
@@ -95,57 +106,65 @@ class Parser:
         # w: Wooden Block
         for entity in entities:
             e_type = entity.get("type")
-            if e_type in walkable_entities:
+            if e_type == "a" or e_type == "bp":
                 self.power_ups.append(entity)
                 continue
             coordinates = entity.get("x"), entity.get("y")
-            self.walkable_map[coordinates[0], coordinates[1]] = math.inf
-            draw_cross(self.cell_occupation_danger_map, coordinates[0], coordinates[1], rad=1, value=close_cell_danger)
-            self.entities_map[coordinates[0]][coordinates[1]] = entity
+            if e_type != "x":
+                self.walkable_map[coordinates] = math.inf
+            draw_cross(self.cell_occupation_danger_map, coordinates[0], coordinates[1], rad=2,
+                       value=close_cell_danger)
             if e_type == "b":
-                self.bombs.append(entity)
+                bomb = Bomb(
+                    coordinates,
+                    entity.get("blast_diameter"),
+                    entity.get(owner_unit_id)
+                )
+                self.bombs.append(bomb)
                 draw_bomb_explosion(self.all_bomb_explosion_map, entity)
 
-                is_my_bomb = entity.get(owner_init_id) in my_units
+                is_my_bomb = bomb.owner_unit_id in my_units
                 base_danger = my_bomb_starting_danger if is_my_bomb else enemy_bomb_starting_danger
                 bomb_placed_tick = entity.get("created")
                 bomb_will_explode_tick = entity.get("expires")
                 end_danger = 0
-                if tick_number >= bomb_will_explode_tick + bomb_end_danger_ticks:
-                    end_danger = bomb_end_danger_max / (bomb_will_explode_tick - tick_number)
+                if tick_number >= bomb_will_explode_tick - bomb_end_danger_ticks:
+                    end_danger = bomb_end_danger_max * (1 - (bomb_will_explode_tick - tick_number - 1) /
+                                                        bomb_end_danger_ticks)
                 bomb_danger = base_danger + end_danger
                 draw_bomb_explosion(self.danger_map, entity, value=bomb_danger)
 
                 if is_my_bomb:
-                    self.my_bombs.append(entity)
+                    self.my_bombs.append(bomb)
                     if tick_number - bomb_placed_tick > bomb_arming_ticks:
                         draw_bomb_explosion_with_obj(self.my_bomb_explosion_map,
                                                      self.my_bomb_explosion_map_objects,
-                                                     entity)
-                        self.my_armed_bombs.append(entity)
+                                                     bomb)
+                        self.my_armed_bombs.append(bomb)
                 else:
-                    self.enemy_bombs.append(entity)
+                    self.enemy_bombs.append(bomb)
             if e_type == "x":
                 self.endgame_fires += 1
-                self.danger_map[coordinates[0], coordinates[1]] = explosion_danger
+                self.danger_map[coordinates] = explosion_danger
             if calculate_wall_map:
                 if e_type == "m":
-                    self.wall_map[coordinates[0], coordinates[1]] = math.inf
+                    self.wall_map[coordinates] = math.inf
                 if e_type == "w" or e_type == "o":
-                    self.wall_map[coordinates[0], coordinates[1]] = entity.get("hp")
+                    self.wall_map[coordinates] = entity.get("hp")
 
     def parse_unit(self, unit_id, target_list, target_ids_list):
         unit = self.units.get(unit_id)
         pos = point(unit)
         if unit.get("hp") <= 0:
             self.walkable_map[pos.x, pos.y] = math.inf
-            draw_cross(self.cell_occupation_danger_map, pos.x, pos.y, rad=1, value=close_cell_danger)
+            draw_cross(self.cell_occupation_danger_map, pos.x, pos.y, rad=2, value=close_cell_danger)
         else:
             target_ids_list.append(unit_id)
             res = Unit(
                 unit_id,
                 pos,
                 unit.get("inventory").get("bombs"),
+                unit.get("hp"),
                 unit.get("blast_diameter"),
             )
             target_list.append(res)
@@ -153,10 +172,10 @@ class Parser:
 
 
 def draw_bomb_explosion_with_obj(arr, obj_arr, bomb, value=1.):
-    x, y = bomb.get("x"), bomb.get("y")
+    x, y = bomb.pos
     arr[x, y] = 1
     obj_arr[x][y] = bomb
-    for i in range(blast_r(bomb.get("blast_diameter"))):
+    for i in range(blast_r(bomb.blast_diameter)):
         if x + i < arr.shape[0]:
             arr[x + i, y] += value
             obj_arr[x + i][y] = bomb

@@ -20,8 +20,11 @@ services:
             context: ../../../python3
             dockerfile: Dockerfile.rule
 
+    good-search:
+        image: docker.io/opryzhek/bombermann:good-search
+
     published-agent:
-        image: docker.io/opryzhek/bombermann
+        image: docker.io/opryzhek/bombermann:good-search-2
 
     enemy-agent:
         image: public.docker.cloudgamepad.com/gocoder/f439u384k4554etg-baseline

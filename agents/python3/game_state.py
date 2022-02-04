@@ -1,8 +1,7 @@
-import asyncio
-from typing import Union
-import websockets
 import json
+from typing import Union
 
+import websockets
 from websockets.client import WebSocketClientProtocol
 
 _move_set = set(("up", "down", "left", "right"))
@@ -11,7 +10,7 @@ _move_set = set(("up", "down", "left", "right"))
 class GameState:
     def __init__(self, connection_string: str):
         self._connection_string = connection_string
-        self._state = None
+        self.state = None
         self._tick_callback = None
 
     def set_game_tick_callback(self, generate_agent_action_callback):
@@ -57,10 +56,10 @@ class GameState:
             pass
         elif data_type == "game_state":
             payload = data.get("payload")
-            self._on_game_state(payload)
+            self.on_game_state(payload)
         elif data_type == "tick":
             payload = data.get("payload")
-            await self._on_game_tick(payload)
+            await self.on_game_tick(payload)
         elif data_type == "endgame_state":
             payload = data.get("payload")
             winning_agent_id = payload.get("winning_agent_id")
@@ -68,10 +67,10 @@ class GameState:
         else:
             print(f"unknown packet \"{data_type}\": {data}")
 
-    def _on_game_state(self, game_state):
-        self._state = game_state
+    def on_game_state(self, game_state):
+        self.state = game_state
 
-    async def _on_game_tick(self, game_tick):
+    async def on_game_tick(self, game_tick):
         events = game_tick.get("events")
         for event in events:
             event_type = event.get("type")
@@ -88,16 +87,16 @@ class GameState:
                 self._on_entity_state(x, y, updated_entity)
             elif event_type == "unit":
                 unit_action = event.get("data")
-                self._on_unit_action(unit_action)
+                self.on_unit_action(unit_action)
             else:
                 print(f"unknown event type {event_type}: {event}")
         if self._tick_callback is not None:
             tick_number = game_tick.get("tick")
-            await self._tick_callback(tick_number, self._state)
+            await self._tick_callback(tick_number, self.state)
 
     def _on_entity_spawned(self, spawn_event):
         spawn_payload = spawn_event.get("data")
-        self._state["entities"].append(spawn_payload)
+        self.state["entities"].append(spawn_payload)
 
     def _on_entity_expired(self, spawn_event):
         expire_payload = spawn_event.get("data")
@@ -109,22 +108,22 @@ class GameState:
             should_remove = entity_x == x and entity_y == y
             return should_remove == False
 
-        self._state["entities"] = list(filter(
-            filter_entity_fn, self._state["entities"]))
+        self.state["entities"] = list(filter(
+            filter_entity_fn, self.state["entities"]))
 
     def _on_unit_state(self, unit_state):
         unit_id = unit_state.get("unit_id")
-        self._state["unit_state"][unit_id] = unit_state
+        self.state["unit_state"][unit_id] = unit_state
 
     def _on_entity_state(self, x, y, updated_entity):
-        for entity in self._state.get("entities"):
+        for entity in self.state.get("entities"):
             if entity.get("x") == x and entity.get("y") == y:
-                self._state["entities"].remove(entity)
-        self._state["entities"].append(updated_entity)
+                self.state["entities"].remove(entity)
+        self.state["entities"].append(updated_entity)
 
-    def _on_unit_action(self, action_packet):
+    def on_unit_action(self, action_packet):
         unit_id = action_packet["unit_id"]
-        unit = self._state["unit_state"][unit_id]
+        unit = self.state["unit_state"][unit_id]
         coordinates = unit.get("coordinates")
         action_type = action_packet.get("type")
         if action_type == "move":
@@ -132,7 +131,7 @@ class GameState:
             if move in _move_set:
                 new_coordinates = self._get_new_unit_coordinates(
                     coordinates, move)
-                self._state["unit_state"][unit_id]["coordinates"] = new_coordinates
+                self.state["unit_state"][unit_id]["coordinates"] = new_coordinates
         elif action_type == "bomb":
             # no - op since this is redundant info
             pass
