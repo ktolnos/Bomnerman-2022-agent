@@ -1,10 +1,10 @@
 import asyncio
 import time
-from collections import deque, Counter
+from collections import deque
 
 from actions import MoveAction, BombAction, DetonateBombAction, Action
 from astar import AStar
-from engame_fire_simulator import EndgameFireSimulator
+from engame_fire_simulator2 import EndgameFireSimulator2
 from least_cost_search import LeastCostSearch
 from parser import *
 from utils import *
@@ -30,7 +30,7 @@ class RulePolicy:
     def __init__(self):
         self.busy = set()  # units that already made the move
         self.tasks = list()
-        self.endgame_fire_simulator = EndgameFireSimulator(15, 15)
+        self.endgame_fire_simulator = EndgameFireSimulator2(15, 15)
         self.has_no_path_to_center = None
         self.all_have_path_to_center = False
         self.already_occupied_spots = list()
@@ -155,29 +155,32 @@ class RulePolicy:
         self.last_was_cancelled = False
 
     def compute_state_map(self):
-        self.state_map = np.ones_like(self.parser.danger_map) * 3
+        self.state_map = np.ones_like(self.parser.danger_map) * 4
 
         self.state_map += self.parser.walkable_map
         self.state_map += self.parser.danger_map
         self.state_map += self.endgame_fire_simulator.get_endgame_fire_danger(self.parser.endgame_fires)
 
     def blow_up_enemies(self, tick_number):
-        bomb_to_enemies = Counter()
         for enemy in self.parser.enemy_units:
-            bomb = self.parser.my_bomb_explosion_map_objects[enemy.pos.x][enemy.pos.y]
-            if bomb is not None:
-                bomb_to_enemies[bomb] += 1
-        bomb_to_my_units = Counter()
-        for unit in self.parser.my_units:
-            bomb = self.parser.my_bomb_explosion_map_objects[unit.pos.x][unit.pos.y]
-            if bomb is not None:
-                bomb_to_my_units[bomb] += 1
-        for bomb in bomb_to_enemies:
-            if bomb_to_enemies[bomb] > bomb_to_my_units[bomb]:
-                unit_id = bomb.owner_unit_id
-                if self.is_busy(unit_id):
-                    continue
-                self.execute_action(DetonateBombAction(unit_id, bomb), tick_number)
+            bomb_entry: BombExplosionMapEntry = self.parser.all_bomb_explosion_map[enemy.pos]
+            if bomb_entry and bomb_entry.cluster.can_be_triggered_by_me:
+                bomb_to_trigger = bomb_entry.cluster.my_bomb_that_can_trigger
+                enemies_in_cluster = 0
+                for e in self.parser.enemy_units:
+                    e_bomb_entry: BombExplosionMapEntry = self.parser.all_bomb_explosion_map[e.pos]
+                    if e_bomb_entry and e_bomb_entry.cluster == bomb_entry.cluster:
+                        enemies_in_cluster += 1
+                my_in_cluster = 0
+                for u in self.parser.my_units:
+                    u_bomb_entry: BombExplosionMapEntry = self.parser.all_bomb_explosion_map[u.pos]
+                    if u_bomb_entry and u_bomb_entry.cluster == bomb_entry.cluster:
+                        my_in_cluster += 1
+                if my_in_cluster < enemies_in_cluster:
+                    unit_id = bomb_to_trigger.owner_unit_id
+                    if self.is_busy(unit_id):
+                        continue
+                    self.execute_action(DetonateBombAction(unit_id, bomb_to_trigger), tick_number)
 
     def place_bombs(self, tick_number):
         for unit in self.parser.my_units:
@@ -210,18 +213,7 @@ class RulePolicy:
             if my_unit_is_near:
                 continue
 
-            wm = self.parser.walkable_map
-            pos = unit.pos
-            can_escape = False
-            if unit.pos.x > 0 and wm[pos.x - 1, pos.y] != math.inf:
-                can_escape = True
-            if not can_escape and unit.pos.x < self.parser.w - 1 and wm[pos.x + 1, pos.y] != math.inf:
-                can_escape = True
-            if not can_escape and unit.pos.y > 0 and wm[pos.x, pos.y - 1] != math.inf:
-                can_escape = True
-            if not can_escape and unit.pos.y < self.parser.h - 1 and wm[pos.x, pos.y + 1] != math.inf:
-                can_escape = True
-            if not can_escape:
+            if not self.parser.check_free(unit.pos, blast_r(unit.blast_diameter) + 1):
                 continue
 
             for enemy in self.parser.enemy_units:
@@ -273,11 +265,12 @@ class RulePolicy:
             unit_map[spot] = math.inf
 
         search_budget = search_budget_small if self.last_was_cancelled else search_budget_big
+
         least_cost_search = LeastCostSearch(unit_map, unit.pos,
                                             exclude_points=self.already_occupied_destinations,
                                             search_budget=search_budget)
-
         safest_path, cost = least_cost_search.run(horizon=search_horizon)
+        # good breakpoint spot
         self.already_occupied_destinations.add(safest_path[-1])
         self.debug_print(unit_map, unit, safest_path, cost)
         move = self.plan_move(unit.id, safest_path)
@@ -388,7 +381,7 @@ class RulePolicy:
         my_distance = self.endgame_fire_simulator.endgame_fire_spiral[unit.pos]
         enemy_distance = self.endgame_fire_simulator.endgame_fire_spiral[self.closest_to_center_enemy.pos]
 
-        if enemy_distance < my_distance:
+        if enemy_distance > my_distance:
             self.debug_print("{tick} Enemy {enemy} is closer "
                              "({enemy_dist} < {me_dist}) then me {me}".format(tick=self.tick_number,
                                                                               enemy=self.closest_to_center_enemy,
@@ -399,20 +392,20 @@ class RulePolicy:
                        value=close_to_center_enemy_discount)
 
     def calculate_closest_to_center(self):
-        enemy_min_distance = math.inf
+        enemy_max_closeness = -math.inf
         for enemy in self.parser.enemy_units:
-            unit_distance = self.endgame_fire_simulator.endgame_fire_spiral[enemy.pos]
-            if unit_distance < enemy_min_distance:
-                enemy_min_distance = unit_distance
+            unit_closeness = self.endgame_fire_simulator.endgame_fire_spiral[enemy.pos]
+            if unit_closeness > enemy_max_closeness:
+                enemy_max_closeness = unit_closeness
                 self.closest_to_center_enemy = enemy
-        my_min_distance = math.inf
+        my_max_closeness = -math.inf
         for my_unit in self.parser.my_units:
-            unit_distance = self.endgame_fire_simulator.endgame_fire_spiral[my_unit.pos]
-            if unit_distance < my_min_distance:
-                my_min_distance = unit_distance
+            unit_closeness = self.endgame_fire_simulator.endgame_fire_spiral[my_unit.pos]
+            if unit_closeness > my_max_closeness:
+                my_max_closeness = unit_closeness
                 self.closest_to_center_my = my_unit
         self.closest_to_center_unit = self.closest_to_center_my if \
-            my_min_distance < enemy_min_distance else self.closest_to_center_enemy
+            my_max_closeness > enemy_max_closeness else self.closest_to_center_enemy
 
     def is_busy(self, unit_id):
         return unit_id in self.busy

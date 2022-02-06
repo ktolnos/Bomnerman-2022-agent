@@ -5,8 +5,9 @@ from game_state import GameState
 from rule_policy import RulePolicy, Ticker, np
 
 # replay_path = "../logs/replay.json"
-replay_path = "../runs/arxiv/replay-88-1644004425.9603431-1644004425.9941592.json"
-target_tick = 106
+replay_path = "../runs/arxiv/replay-78-1644097313.134485-1644097313.150521.json"
+# replay_path = "../lost_runs/lucky-lock-vs-honorable-friend.json"
+target_tick = 285
 target_agent = 'a'
 
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import heapq
 import math
 from dataclasses import dataclass
@@ -87,3 +89,46 @@ class PriorityQueue:
 
     def get(self) -> Any:
         return heapq.heappop(self.elements)[1]
+
+
+@dataclass(frozen=True)
+class Unit:
+    id: str
+    pos: Point
+    bombs: int
+    hp: int
+    blast_diameter: int
+
+
+@dataclass(frozen=True)
+class Bomb:
+    pos: Point
+    blast_diameter: int
+    owner_unit_id: str
+    is_armed: bool
+
+
+@dataclass(frozen=True)
+class BombCluster:
+    start: Point
+    danger: float
+    is_armed: bool
+    can_be_triggered_by_me: bool
+    can_be_triggered_by_enemy: bool
+    my_bomb_that_can_trigger: Bomb
+
+    def merge_with(self, other: BombCluster) -> BombCluster:
+        return BombCluster(
+            self.start,
+            max(self.danger, other.danger),
+            self.is_armed or other.is_armed,
+            self.can_be_triggered_by_me or other.can_be_triggered_by_me,
+            self.can_be_triggered_by_enemy or other.can_be_triggered_by_enemy,
+            self.my_bomb_that_can_trigger if self.my_bomb_that_can_trigger else other.my_bomb_that_can_trigger,
+        )
+
+
+@dataclass(frozen=False)
+class BombExplosionMapEntry:
+    bomb: Bomb
+    cluster: BombCluster

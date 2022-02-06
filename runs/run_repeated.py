@@ -45,8 +45,8 @@ def run_command(run_id: int):
 def main():
     started = time.time()
     subprocess.Popen("rm -rf tmp && mkdir tmp", shell=True).wait()
-    pool = Pool(12)
-    pool.map(run_command, range(96))
+    pool = Pool(6)
+    pool.map(run_command, range(1500))
     score = Counter()
     for filename in os.listdir('tmp'):
         with open("tmp/" + filename, 'r') as file:
