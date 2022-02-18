@@ -5,9 +5,9 @@ from collections import deque
 from actions import MoveAction, BombAction, DetonateBombAction, Action
 from astar import AStar
 from engame_fire_simulator2 import EndgameFireSimulator2
+from game_utils import *
 from least_cost_search import LeastCostSearch
 from parser import *
-from utils import *
 
 
 @dataclass
@@ -164,7 +164,7 @@ class RulePolicy:
     def blow_up_enemies(self, tick_number):
         for enemy in self.parser.enemy_units:
             bomb_entry: BombExplosionMapEntry = self.parser.all_bomb_explosion_map[enemy.pos]
-            if bomb_entry and bomb_entry.cluster.can_be_triggered_by_me:
+            if bomb_entry and bomb_entry.cluster.is_my:
                 bomb_to_trigger = bomb_entry.cluster.my_bomb_that_can_trigger
                 enemies_in_cluster = 0
                 for e in self.parser.enemy_units:

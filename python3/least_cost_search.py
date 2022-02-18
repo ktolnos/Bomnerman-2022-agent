@@ -3,7 +3,7 @@ from typing import Dict, Iterator, List, Optional
 
 import numpy as np
 
-from utils import Point, PriorityQueue, get_neighbours
+from game_utils import Point, PriorityQueue, get_neighbours
 
 
 class LeastCostSearch:

@@ -5,8 +5,8 @@ from unittest import IsolatedAsyncioTestCase
 import numpy as np
 
 from astar import AStar
+from game_utils import Point
 from least_cost_search import LeastCostSearch
-from utils import Point
 
 
 class TestShortestPath(IsolatedAsyncioTestCase):

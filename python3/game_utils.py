@@ -98,6 +98,7 @@ class Unit:
     bombs: int
     hp: int
     blast_diameter: int
+    invincibility_last_tick: int
 
 
 @dataclass(frozen=True)
@@ -113,8 +114,9 @@ class BombCluster:
     start: Point
     danger: float
     is_armed: bool
-    can_be_triggered_by_me: bool
-    can_be_triggered_by_enemy: bool
+    is_my: bool
+    is_enemy: bool
+    ticks_till_explode: int
     my_bomb_that_can_trigger: Bomb
 
     def merge_with(self, other: BombCluster) -> BombCluster:
@@ -122,8 +124,9 @@ class BombCluster:
             self.start,
             max(self.danger, other.danger),
             self.is_armed or other.is_armed,
-            self.can_be_triggered_by_me or other.can_be_triggered_by_me,
-            self.can_be_triggered_by_enemy or other.can_be_triggered_by_enemy,
+            self.is_my or other.is_my,
+            self.is_enemy or other.is_enemy,
+            min(self.ticks_till_explode, other.ticks_till_explode),
             self.my_bomb_that_can_trigger if self.my_bomb_that_can_trigger else other.my_bomb_that_can_trigger,
         )
 

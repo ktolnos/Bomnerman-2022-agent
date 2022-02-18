@@ -1,8 +1,11 @@
 import asyncio
 import json
 
+import torch
+
 from game_state import GameState
-from rule_policy import RulePolicy, Ticker, np
+from nn.nn_policy import PolicyNeuralNetPolicy
+from rule_policy import Ticker, np
 
 # replay_path = "../logs/replay.json"
 replay_path = "../runs/arxiv/replay-78-1644097313.134485-1644097313.150521.json"
@@ -33,7 +36,8 @@ def main():
         replay = json.load(json_file)
     replay_payload = replay.get("payload")
 
-    policy = RulePolicy()
+    # policy = RulePolicy()
+    policy = PolicyNeuralNetPolicy(torch.jit.load("nn/model.pth"))
     policy.debug = True
     ticker = Ticker()
     policy.init(game_state, ticker)

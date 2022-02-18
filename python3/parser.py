@@ -1,4 +1,4 @@
-from utils import *
+from game_utils import *
 
 owner_unit_id = "unit_id"
 
@@ -33,7 +33,8 @@ search_horizon = 30
 
 class Parser:
 
-    def __init__(self, tick_number, game_state, calculate_wall_map=False):
+    def __init__(self, tick_number, game_state,
+                 calculate_wall_map=False, pov_agent_id=None):
         w = game_state.get("world").get("width")
         h = game_state.get("world").get("height")
         self.w = w
@@ -65,7 +66,10 @@ class Parser:
         units = game_state.get("unit_state")
         self.units = units
 
-        my_agent_id = game_state.get("connection").get("agent_id")
+        if pov_agent_id is None:
+            my_agent_id = game_state.get("connection").get("agent_id")
+        else:
+            my_agent_id = pov_agent_id
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
         for unit_id in my_units:
             self.parse_unit(unit_id, self.my_units, self.my_unit_ids)
@@ -130,8 +134,9 @@ class Parser:
                     bomb.pos,
                     bomb_danger,
                     is_armed,
-                    can_be_triggered_by_me=is_my_bomb and is_armed,
-                    can_be_triggered_by_enemy=not is_my_bomb,
+                    is_my=is_my_bomb,
+                    is_enemy=not is_my_bomb,
+                    ticks_till_explode=bomb_will_explode_tick - tick_number,
                     my_bomb_that_can_trigger=bomb if is_my_bomb and is_armed else None
                 )
                 map_entry = BombExplosionMapEntry(bomb, cluster)
@@ -145,7 +150,8 @@ class Parser:
                 else:
                     self.enemy_bombs.append(bomb)
             if e_type == "x":
-                self.endgame_fires += 1
+                if "expires" not in entity:
+                    self.endgame_fires += 1
                 self.danger_map[coordinates] = explosion_danger
             if calculate_wall_map:
                 if e_type == "m":
@@ -153,11 +159,10 @@ class Parser:
                 if e_type == "w" or e_type == "o":
                     self.wall_map[coordinates] = entity.get("hp")
         self.process_bombs()
-        for x in range(self.all_bomb_explosion_map.shape[0]):
-            for y in range(self.all_bomb_explosion_map.shape[1]):
-                map_entry = self.all_bomb_explosion_map[x, y]
-                if map_entry:
-                    self.danger_map[x, y] += map_entry.cluster.danger
+        for x, y in np.ndindex(self.all_bomb_explosion_map.shape):
+            map_entry = self.all_bomb_explosion_map[x, y]
+            if map_entry:
+                self.danger_map[x, y] += map_entry.cluster.danger
 
     def process_bombs(self):
         arr = self.all_bomb_explosion_map
@@ -223,6 +228,7 @@ class Parser:
                 unit.get("inventory").get("bombs"),
                 unit.get("hp"),
                 unit.get("blast_diameter"),
+                unit.get("invulnerability")
             )
             target_list.append(res)
             self.unit_id_to_unit[unit_id] = res
@@ -295,3 +301,15 @@ def draw_cross(arr, x, y, rad, value):
             arr[x, y + i] += value
         if y - i >= 0:
             arr[x, y - i] += value
+
+
+def draw_cross_assign(arr, x, y, rad, value):
+    for i in range(rad):
+        if x + i < arr.shape[0]:
+            arr[x + i, y] = value
+        if x - i >= 0:
+            arr[x - i, y] = value
+        if y + i < arr.shape[1]:
+            arr[x, y + i] = value
+        if y - i >= 0:
+            arr[x, y - i] = value
