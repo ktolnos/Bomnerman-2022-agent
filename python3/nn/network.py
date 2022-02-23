@@ -140,10 +140,11 @@ class MaskedWeightedCrossEntropyLoss(nn.Module):
 
     def forward(self, inputs, target, mask):
         inputs = torch.softmax(inputs, dim=1)
-        inputs = torch.mul(inputs, mask.unsqueeze(1))
         inputs_count = torch.sum(mask)
-        loss = F.cross_entropy(inputs, target, weight=self.class_weights, reduction='sum')
+        loss = F.cross_entropy(inputs, target, weight=self.class_weights, reduction='none')
+        masked_loss = torch.mul(loss, mask)
+        loss_sum = masked_loss.sum()
         if inputs_count:
-            return loss / inputs_count
+            return loss_sum / inputs_count
         else:
             return 0

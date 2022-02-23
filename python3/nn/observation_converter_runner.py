@@ -44,6 +44,7 @@ def convert_replays_worker(replays):
         total_steps
     )
 
+
 def convert_replays_to_dataset():
     n_workers = 1
     pool = ProcessPoolExecutor(n_workers)

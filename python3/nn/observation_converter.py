@@ -371,8 +371,6 @@ class ObservationConverter:
             loop.run_until_complete(asyncio.gather(task))
 
         history = np.moveaxis(converted_history, -1, 1)
-        unit_actions = np.moveaxis(unit_actions, -1, 1)
-        bomb_actions = np.moveaxis(bomb_actions, -1, 1)
         return history, unit_actions, unit_mask, unit_action_freq, bomb_actions, bomb_mask, bomb_action_freq
 
 

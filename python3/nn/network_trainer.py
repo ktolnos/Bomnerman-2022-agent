@@ -82,7 +82,7 @@ def execute_training():
     val_train_split = 0.1
     val_start_idx = int(len(samples) * (1 - val_train_split))
     dataloader = DataLoader(
-        BombermanDataset(dataset_folder, samples[:val_start_idx], batch_size=256),
+        BombermanDataset(dataset_folder, samples[:val_start_idx], batch_size=128),
         batch_size=128,
         num_workers=4
     )
@@ -96,11 +96,12 @@ def execute_training():
     bomb_criterion = MaskedWeightedCrossEntropyLoss(model.n_bomb_classes,
                                                     class_weights=torch.Tensor([0.079, 0.920]))
     optimizer = optim.AdamW(model.parameters(), lr=1e-3)
-    epochs = 1
+    epochs = 5
     scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=epochs, eta_min=1e-6)
     train_model(model, dataloader, validation_loader, unit_criterion, bomb_criterion
                 , optimizer, scheduler, num_epochs=epochs)
 
 
 if __name__ == '__main__':
+    print(torch.get_num_threads())
     execute_training()
