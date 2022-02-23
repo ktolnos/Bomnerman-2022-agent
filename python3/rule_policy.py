@@ -5,7 +5,6 @@ from collections import deque
 from actions import MoveAction, BombAction, DetonateBombAction, Action
 from astar import AStar
 from engame_fire_simulator2 import EndgameFireSimulator2
-from game_utils import *
 from least_cost_search import LeastCostSearch
 from parser import *
 
@@ -45,6 +44,12 @@ class RulePolicy:
         self.closest_to_center_my = None
         self.closest_to_center_enemy = None
         self.debug = False
+
+    def reset(self):
+        self.last_was_cancelled = False
+        self.all_have_path_to_center = False
+        self.has_no_path_to_center = None
+        self.print_queue = deque()
 
     def init(self, client, ticker):
         self.client = client
@@ -118,7 +123,8 @@ class RulePolicy:
             self.last_was_cancelled = True
             return
 
-        self.loop.run_until_complete(asyncio.gather(*self.tasks))
+        if not self.loop.is_running():
+            self.loop.run_until_complete(asyncio.gather(*self.tasks))
         tasks_time = time.time()
 
         if tick_number != self.ticker.tick:
@@ -164,7 +170,7 @@ class RulePolicy:
     def blow_up_enemies(self, tick_number):
         for enemy in self.parser.enemy_units:
             bomb_entry: BombExplosionMapEntry = self.parser.all_bomb_explosion_map[enemy.pos]
-            if bomb_entry and bomb_entry.cluster.is_my:
+            if bomb_entry and bomb_entry.cluster.my_bomb_that_can_trigger:
                 bomb_to_trigger = bomb_entry.cluster.my_bomb_that_can_trigger
                 enemies_in_cluster = 0
                 for e in self.parser.enemy_units:

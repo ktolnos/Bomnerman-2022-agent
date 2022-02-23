@@ -12,12 +12,13 @@ class GameState:
         self._connection_string = connection_string
         self.state = None
         self._tick_callback = None
+        self.replay = None
 
     def set_game_tick_callback(self, generate_agent_action_callback):
         self._tick_callback = generate_agent_action_callback
 
     async def connect(self):
-        self.connection = await websockets.connect(self._connection_string)
+        self.connection = await websockets.connect(self._connection_string, ping_interval=None)
         if self.connection.open:
             return self.connection
 
@@ -38,12 +39,15 @@ class GameState:
             x, y], "unit_id": unit_id}
         await self._send(packet)
 
+    async def handle_message(self, connection: WebSocketClientProtocol):
+        raw_data = await connection.recv()
+        data = json.loads(raw_data)
+        await self._on_data(data)
+
     async def handle_messages(self, connection: WebSocketClientProtocol):
         while True:
             try:
-                raw_data = await connection.recv()
-                data = json.loads(raw_data)
-                await self._on_data(data)
+                await self.handle_message(connection)
             except websockets.exceptions.ConnectionClosed:
                 print('Connection with server closed')
                 break
@@ -61,6 +65,7 @@ class GameState:
             payload = data.get("payload")
             await self.on_game_tick(payload)
         elif data_type == "endgame_state":
+            self.replay = data
             payload = data.get("payload")
             winning_agent_id = payload.get("winning_agent_id")
             print(f"Game over. Winner: Agent {winning_agent_id}")

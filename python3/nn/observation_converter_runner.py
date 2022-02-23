@@ -7,8 +7,8 @@ from tqdm import tqdm
 
 from nn.observation_converter import ObservationConverter, unit_actions_size, bomb_actions_size
 
-replays_folder = "../runs/tmp"
-dataset_folder = "../runs/dataset_big_separate_actions"
+replays_folder = "../../runs/replays_small"
+dataset_folder = "../../runs/dataset_small_separate_actions"
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,7 @@ def convert_replays_worker(replays):
     )
 
 def convert_replays_to_dataset():
-    n_workers = 12
+    n_workers = 1
     pool = ProcessPoolExecutor(n_workers)
     paths = os.listdir(replays_folder)
     path_len = len(paths)

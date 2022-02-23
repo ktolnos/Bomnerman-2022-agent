@@ -95,6 +95,61 @@ def calc_steps_to_center_layer(parser):
     return 1. - np.sqrt(steps)
 
 
+def populate_actions_plane2(tick, game_state, unit_actions, unit_mask, unit_action_freq,
+                     bomb_actions, bomb_mask, bomb_action_freq, tick_number, parser, my_unit_ids):
+    acted_unit_ids = set()
+    detonated_bombs = set()
+    total_unit_actions = 0
+    if tick:
+        for event in tick["events"]:
+            if event["type"] == "unit":
+                action_data = event["data"]
+                unit_id = action_data["unit_id"]
+                if unit_id not in my_unit_ids:
+                    continue
+                acted_unit_ids.add(unit_id)
+                unit_pos = point(game_state["unit_state"][unit_id])
+                action_pos = unit_pos
+                action = action_noop
+                if action_data["type"] == "bomb":
+                    action = action_place_bomb
+                elif action_data["type"] == "move":
+                    direction = action_data["move"]
+                    if direction == "up":
+                        action = action_move_up
+                    if direction == "down":
+                        action = action_move_down
+                    if direction == "left":
+                        action = action_move_left
+                    if direction == "right":
+                        action = action_move_right
+                elif action_data["type"] == "detonate":
+                    detonation_pos = action_data["coordinates"]
+                    detonation_pos = Point(detonation_pos[0], detonation_pos[1])
+                    detonated_bombs.add(detonation_pos)
+                    bomb_actions[tick_number - 1, detonation_pos[0], detonation_pos[1]] = bomb_action_detonate
+                    bomb_mask[tick_number - 1, detonation_pos[0], detonation_pos[1]] = 1
+                    bomb_action_freq[bomb_action_detonate] += 1
+                if action != action_noop:
+                    unit_actions[tick_number - 1, action_pos[0], action_pos[1]] = action
+                    unit_mask[tick_number - 1, action_pos[0], action_pos[1]] = 1
+                    unit_action_freq[action] += 1
+                    total_unit_actions += 1
+    for unit in parser.my_units:
+        if unit.id not in acted_unit_ids:
+            unit_actions[tick_number - 1, unit.pos[0], unit.pos[1]] = action_noop
+            unit_mask[tick_number - 1, unit.pos[0], unit.pos[1]] = 1
+            unit_action_freq[action_noop] += 1
+            total_unit_actions += 1
+    for bomb in parser.my_armed_bombs:
+        if bomb.pos not in detonated_bombs:
+            bomb_actions[tick_number - 1, bomb.pos[0], bomb.pos[1]] = bomb_action_noop
+            bomb_mask[tick_number - 1, bomb.pos[0], bomb.pos[1]] = 1
+            bomb_action_freq[bomb_action_noop] += 1
+    if total_unit_actions > 3:
+        assert False, "more than 3 units acted"
+
+
 def populate_actions(tick, game_state, unit_actions, unit_mask, unit_action_freq,
                      bomb_actions, bomb_mask, bomb_action_freq, tick_number, parser, my_unit_ids):
     acted_unit_ids = set()
@@ -127,23 +182,23 @@ def populate_actions(tick, game_state, unit_actions, unit_mask, unit_action_freq
                     detonation_pos = action_data["coordinates"]
                     detonation_pos = Point(detonation_pos[0], detonation_pos[1])
                     detonated_bombs.add(detonation_pos)
-                    bomb_actions[tick_number - 1, detonation_pos[0], detonation_pos[1], bomb_action_detonate] = 1
+                    bomb_actions[tick_number - 1, detonation_pos[0], detonation_pos[1]] = bomb_action_detonate
                     bomb_mask[tick_number - 1, detonation_pos[0], detonation_pos[1]] = 1
                     bomb_action_freq[bomb_action_detonate] += 1
                 if action != action_noop:
-                    unit_actions[tick_number - 1, action_pos[0], action_pos[1], action] = 1
+                    unit_actions[tick_number - 1, action_pos[0], action_pos[1]] = action
                     unit_mask[tick_number - 1, action_pos[0], action_pos[1]] = 1
                     unit_action_freq[action] += 1
                     total_unit_actions += 1
     for unit in parser.my_units:
         if unit.id not in acted_unit_ids:
-            unit_actions[tick_number - 1, unit.pos[0], unit.pos[1], action_noop] = 1
+            unit_actions[tick_number - 1, unit.pos[0], unit.pos[1]] = action_noop
             unit_mask[tick_number - 1, unit.pos[0], unit.pos[1]] = 1
             unit_action_freq[action_noop] += 1
             total_unit_actions += 1
     for bomb in parser.my_armed_bombs:
         if bomb.pos not in detonated_bombs:
-            bomb_actions[tick_number - 1, bomb.pos[0], bomb.pos[1], bomb_action_noop] = 1
+            bomb_actions[tick_number - 1, bomb.pos[0], bomb.pos[1]] = bomb_action_noop
             bomb_mask[tick_number - 1, bomb.pos[0], bomb.pos[1]] = 1
             bomb_action_freq[bomb_action_noop] += 1
     if total_unit_actions > 3:
@@ -249,15 +304,15 @@ class ObservationConverter:
         draw_layer(rgb, screen, my_bombs_layer, 0, 0.3, 0.3, alpha=0.7)
         draw_layer(rgb, screen, enemy_bombs_layer, 0.3, 0, 0.3, alpha=0.7)
 
-        draw_layer(rgb, unit_actions, action_move_up, 0, 0, 1, alpha=0.5)
-        draw_layer(rgb, unit_actions, action_move_down, 1, 0, 0, alpha=0.5)
-        draw_layer(rgb, unit_actions, action_move_left, 1, 0, 1, alpha=0.5)
-        draw_layer(rgb, unit_actions, action_move_right, 1, 1, 0, alpha=0.5)
-        draw_layer(rgb, unit_actions, action_noop, 0, 0, 0, alpha=0.5)
-        draw_layer(rgb, unit_actions, action_place_bomb, 0, 1, 1, alpha=0.5)
+        # draw_layer(rgb, unit_actions, action_move_up, 0, 0, 1, alpha=0.5)
+        # draw_layer(rgb, unit_actions, action_move_down, 1, 0, 0, alpha=0.5)
+        # draw_layer(rgb, unit_actions, action_move_left, 1, 0, 1, alpha=0.5)
+        # draw_layer(rgb, unit_actions, action_move_right, 1, 1, 0, alpha=0.5)
+        # draw_layer(rgb, unit_actions, action_noop, 0, 0, 0, alpha=0.5)
+        # draw_layer(rgb, unit_actions, action_place_bomb, 0, 1, 1, alpha=0.5)
 
-        draw_layer(rgb, bomb_actions, bomb_action_detonate, 1, 0, 0, alpha=0.5)
-        draw_layer(rgb, bomb_actions, bomb_action_noop, 0.5, 0.5, 0.5, alpha=0.5)
+        # draw_layer(rgb, bomb_actions, bomb_action_detonate, 1, 0, 0, alpha=0.5)
+        # draw_layer(rgb, bomb_actions, bomb_action_noop, 0.5, 0.5, 0.5, alpha=0.5)
 
         rgb *= 255
 
@@ -285,8 +340,8 @@ class ObservationConverter:
 
         history_len = history[-1]["tick"]
         converted_history = np.ndarray((history_len, *screen_shape), dtype=float)
-        unit_actions = np.zeros((history_len, w, h, unit_actions_size))
-        bomb_actions = np.zeros((history_len, w, h, bomb_actions_size))
+        unit_actions = np.zeros((history_len, w, h), dtype=int)
+        bomb_actions = np.zeros((history_len, w, h), dtype=int)
         unit_mask = np.zeros((history_len, w, h))
         bomb_mask = np.zeros((history_len, w, h))
         unit_action_freq = np.zeros((unit_actions_size,))
