@@ -1,0 +1,16 @@
+model_UNET_1.5k_vs_enemy_corrected_weights.pth
+Epoch 1/5 | Loss: 3.4632 | Validation loss: 4.0635 | LR: 0.000905
+Epoch 2/5 | Loss: 3.2113 | Validation loss: 3.8390 | LR: 0.000655
+Epoch 3/5 | Loss: 3.1046 | Validation loss: 3.8273 | LR: 0.000346
+Epoch 4/5 | Loss: 3.0090 | Validation loss: 3.7301 | LR: 0.000096
+Epoch 5/5 | Loss: 2.9318 | Validation loss: 3.7154 | LR: 0.001000
+2094it [01:40, 20.86it/s]
+238it [00:05, 40.29it/s]
+2094it [01:35, 21.94it/s]
+238it [00:05, 40.48it/s]
+2094it [01:36, 21.81it/s]
+238it [00:05, 40.65it/s]
+2094it [01:33, 22.33it/s]
+238it [00:05, 40.91it/s]
+2094it [01:33, 22.35it/s]
+238it [00:05, 40.56it/s]

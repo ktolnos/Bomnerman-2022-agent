@@ -43,10 +43,11 @@ def run_command(run_id: int):
 
 
 def main():
+    print(os.getcwd())
     started = time.time()
     subprocess.Popen("rm -rf tmp && mkdir tmp", shell=True).wait()
     pool = Pool(6)
-    pool.map(run_command, range(1500))
+    pool.map(run_command, range(18))
     score = Counter()
     for filename in os.listdir('tmp'):
         with open("tmp/" + filename, 'r') as file:

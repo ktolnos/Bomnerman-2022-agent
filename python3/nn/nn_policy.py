@@ -62,7 +62,8 @@ class PolicyNeuralNetPolicy:
             self.follow_policy(states_tensor, tick_number)
         eval_model_time = time.time()
 
-        self.loop.run_until_complete(asyncio.gather(*self.tasks))
+        if not self.loop.is_running():
+            self.loop.run_until_complete(asyncio.gather(*self.tasks))
         tasks_time = time.time()
 
         if tick_number != self.ticker.tick:
@@ -127,6 +128,10 @@ class PolicyNeuralNetPolicy:
                 self.execute_action(BombAction(unit.id), tick_number)
             if unit_action == action_noop:
                 self.execute_action(Action(unit.id), tick_number)
+
+    def reset(self):
+        self.last_was_cancelled = False
+        self.print_queue = deque()
 
     def execute_move(self, unit_id, move, move_cell, tick_number) -> bool:
         self.already_occupied_spots.append(move_cell)

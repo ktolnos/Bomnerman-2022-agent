@@ -8,8 +8,9 @@ from torch.utils.data import DataLoader
 from torchsummary import summary
 
 from nn.dataset import BombermanDataset
-from nn.network import UNet, MaskedWeightedCrossEntropyLoss
+from nn.network import MaskedWeightedCrossEntropyLoss
 from nn.observation_converter import observation_layers
+from nn.resnet import ResNet
 
 dataset_folder = "../../runs/dataset_small_separate_actions"
 
@@ -67,7 +68,8 @@ def train_model(model, dataloader, validation_loader, unit_criterion, bomb_crite
             valid_len += batch_size
             valid_loss += loss.item() * batch_size
         valid_loss /= valid_len
-        print(f'Epoch {epoch + 1}/{num_epochs} | Loss: {epoch_loss:.4f} | Validation loss: {valid_loss:.4f} | LR: {scheduler.get_last_lr()[0]:.6f}')
+        print(
+            f'Epoch {epoch + 1}/{num_epochs} | Loss: {epoch_loss:.4f} | Validation loss: {valid_loss:.4f} | LR: {scheduler.get_last_lr()[0]:.6f}')
     model.eval()
     model.cpu()
     traced = torch.jit.trace(model, torch.rand(1, model.n_channels, 15, 15))
@@ -75,26 +77,28 @@ def train_model(model, dataloader, validation_loader, unit_criterion, bomb_crite
 
 
 def execute_training():
-    model = UNet(n_channels=observation_layers, n_unit_classes=6, n_bomb_classes=2)
+    model = ResNet(n_channels=observation_layers, n_unit_classes=6, n_bomb_classes=2, width=15, height=15)
     summary(model, (17, 15, 15), batch_size=256)
     samples = os.listdir(dataset_folder)
     shuffle(samples)
     val_train_split = 0.1
     val_start_idx = int(len(samples) * (1 - val_train_split))
     dataloader = DataLoader(
-        BombermanDataset(dataset_folder, samples[:val_start_idx], batch_size=128),
-        batch_size=128,
-        num_workers=4
+        BombermanDataset(dataset_folder, samples[:val_start_idx], batch_size=256),
+        batch_size=256,
+        num_workers=0
     )
     validation_loader = DataLoader(
         BombermanDataset(dataset_folder, samples[val_start_idx:], batch_size=1, shuffle_files=False),
-        batch_size=128,
-        num_workers=4
+        batch_size=256,
+        num_workers=0
     )
-    unit_criterion = MaskedWeightedCrossEntropyLoss(model.n_unit_classes,
-                                                    class_weights=torch.Tensor([0.127, 0.969, 0.969, 0.969, 0.969, 0.994]))
+    unit_criterion = MaskedWeightedCrossEntropyLoss(
+        model.n_unit_classes,
+        class_weights=torch.Tensor([0.06404648, 1.7984221, 1.80659228, 1.87150684, 1.88965003, 10.14628923])
+    )
     bomb_criterion = MaskedWeightedCrossEntropyLoss(model.n_bomb_classes,
-                                                    class_weights=torch.Tensor([0.079, 0.920]))
+                                                    class_weights=torch.Tensor([3.49787056, 40.3708781]))
     optimizer = optim.AdamW(model.parameters(), lr=1e-3)
     epochs = 5
     scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=epochs, eta_min=1e-6)
@@ -103,5 +107,4 @@ def execute_training():
 
 
 if __name__ == '__main__':
-    print(torch.get_num_threads())
     execute_training()

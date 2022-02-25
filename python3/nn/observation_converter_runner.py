@@ -7,8 +7,8 @@ from tqdm import tqdm
 
 from nn.observation_converter import ObservationConverter, unit_actions_size, bomb_actions_size
 
-replays_folder = "../../runs/replays_small"
-dataset_folder = "../../runs/dataset_small_separate_actions"
+replays_folder = "../../runs/good-search-3_vs_enemy-baseline_1500"
+dataset_folder = "../../runs/dataset_medium"
 
 
 @dataclass(frozen=True)
@@ -46,7 +46,7 @@ def convert_replays_worker(replays):
 
 
 def convert_replays_to_dataset():
-    n_workers = 1
+    n_workers = 12
     pool = ProcessPoolExecutor(n_workers)
     paths = os.listdir(replays_folder)
     path_len = len(paths)
@@ -67,8 +67,8 @@ def convert_replays_to_dataset():
         total_steps += output.steps
 
     print(f"Total Steps: {total_steps}, Unit: {unit_action_freq_agr}, Bomb: {bomb_action_freq_agr}")
-    unit_class_weight = 1. - unit_action_freq_agr / np.sum(unit_action_freq_agr)
-    bomb_class_weight = 1. - bomb_action_freq_agr / np.sum(bomb_action_freq_agr)
+    unit_class_weight = total_steps / unit_action_freq_agr / len(unit_action_freq_agr)
+    bomb_class_weight = total_steps / bomb_action_freq_agr / len(bomb_action_freq_agr)
     print(f"Class weights unit: {unit_class_weight},"
           f" bomb: {bomb_class_weight}")
 

@@ -20,6 +20,11 @@ services:
             context: ../../../python3
             dockerfile: Dockerfile.rule
 
+    nn-agent:
+        build:
+            context: ../../../python3
+            dockerfile: Dockerfile.nn
+
     good-search:
         image: docker.io/opryzhek/bombermann:good-search
 

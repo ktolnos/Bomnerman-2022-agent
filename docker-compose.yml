@@ -13,7 +13,7 @@ services:
             - FIRE_SPAWN_INTERVAL_TICKS=2
             - GAME_DURATION_TICKS=300
             - GAME_START_DELAY_MS=500
-            - INITIAL_HP=2
+            - INITIAL_HP=3
             - PRNG_SEED=1234
             - SHUTDOWN_ON_GAME_END_ENABLED=1
             - TELEMETRY_ENABLED=1

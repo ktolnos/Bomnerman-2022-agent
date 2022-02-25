@@ -8,9 +8,11 @@ from multiprocessing import Pool
 from random import random
 from time import sleep
 
+import torch
 import websockets
 
 from game_state import GameState
+from nn.nn_policy import PolicyNeuralNetPolicy
 from rule_policy import RulePolicy, Ticker
 
 uri_agent_a = "ws://127.0.0.1:{port}/?role=agent&agentId=agentA"
@@ -20,7 +22,7 @@ replay_dir = "self_play_replays"
 replay_path = replay_dir + "/replay-{id}-{iter}.json"
 logs = "self_play_logs/logs-{id}.txt"
 max_seed = 9007199254740990
-repeats_per_process = 10
+repeats_per_process = 5
 num_processes = 12
 
 
@@ -68,7 +70,8 @@ def run_games_repeated(proc_id: int):
     ticker1 = Ticker()
     policy1.init(client1, ticker1)
 
-    policy2 = RulePolicy()
+    model = torch.jit.load("../python3/nn/model_UNET_1.5k_vs_enemy.pth")
+    policy2 = PolicyNeuralNetPolicy(model)
     client2 = GameState(format_uri_with_port(uri_agent_b, port))
     ticker2 = Ticker()
     policy2.init(client2, ticker2)
