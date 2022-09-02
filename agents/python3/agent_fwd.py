@@ -4,7 +4,7 @@ import random
 from typing import Union
 
 from forward_model import ForwardModel
-from game_state import GameState
+from python3.game_state import GameState
 
 fwd_model_uri = os.environ.get(
     "FWD_MODEL_CONNECTION_STRING") or "ws://127.0.0.1:6969/?role=admin"

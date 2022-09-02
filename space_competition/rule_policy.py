@@ -38,29 +38,20 @@ class RulePolicy:
         self.print_queue = deque()
         self.parser = None
         self.client = None
-        self.ticker = None
-        self.last_was_cancelled = False
         self.closest_to_center_unit = None
         self.closest_to_center_my = None
         self.closest_to_center_enemy = None
         self.debug = False
 
     def reset(self):
-        self.last_was_cancelled = False
         self.all_have_path_to_center = False
         self.has_no_path_to_center = None
         self.print_queue = deque()
 
-    def init(self, client, ticker):
+    def init(self, client):
         self.client = client
-        self.ticker = ticker
 
     def execute_actions(self, tick_number, game_state):
-        if tick_number != self.ticker.tick:
-            self.tick_number = tick_number
-            self.schedule_print("Cancelling policy right away for tick #{}".format(tick_number))
-            return
-
         start_time = time.time()
         self.tick_number = tick_number
 
@@ -71,13 +62,7 @@ class RulePolicy:
         self.already_occupied_spots.clear()
         self.already_occupied_destinations.clear()
 
-        if not self.loop:
-            self.loop = asyncio.get_event_loop()
-
-        if tick_number != self.ticker.tick:
-            self.schedule_print("Cancelling policy call after clear for tick #{}".format(tick_number))
-            self.last_was_cancelled = True
-            return
+        self.loop = asyncio.get_event_loop()
 
         clear_time = time.time()
 
@@ -85,56 +70,23 @@ class RulePolicy:
         parsing_time = time.time()
         self.compute_state_map()
         self.calculate_closest_to_center()
-        if tick_number != self.ticker.tick:
-            self.schedule_print("Cancelling policy call after parsing for tick #{}".format(tick_number))
-            self.last_was_cancelled = True
-            return
-
         self.blow_up_path_to_center(tick_number)
         path_to_center_time = time.time()
-
-        if tick_number != self.ticker.tick:
-            self.schedule_print("Cancelling policy call after path to center for tick #{}".format(tick_number))
-            self.last_was_cancelled = True
-            return
 
         self.blow_up_enemies(tick_number)
         blow_up_time = time.time()
 
-        if tick_number != self.ticker.tick:
-            self.schedule_print("Cancelling policy call after blow up for tick #{}".format(tick_number))
-            self.last_was_cancelled = True
-            return
-
         self.place_bombs(tick_number)
         bombs_time = time.time()
 
-        if tick_number != self.ticker.tick:
-            self.schedule_print("Cancelling policy call after place bombs for tick #{}".format(tick_number))
-            self.last_was_cancelled = True
-            return
-
         self.move_all_to_safer_spot(tick_number)
         move_to_spot_time = time.time()
-
-        if tick_number != self.ticker.tick:
-            self.schedule_print("Cancelling policy call after move all for tick #{}".format(tick_number))
-            self.last_was_cancelled = True
-            return
 
         if not self.loop.is_running():
             self.loop.run_until_complete(asyncio.gather(*self.tasks))
         tasks_time = time.time()
 
-        if tick_number != self.ticker.tick:
-            self.schedule_print("Cancelling policy call after tasks for tick #{}".format(tick_number))
-            self.last_was_cancelled = True
-            return
-
-        while not self.debug and not self.last_was_cancelled and self.print_queue:
-            if tick_number != self.ticker.tick:
-                self.last_was_cancelled = True
-                return
+        while not self.debug and self.print_queue:
             print(*self.print_queue.popleft())
         printing_time = time.time()
 
@@ -157,7 +109,6 @@ class RulePolicy:
                                       move_to_spot_time=(move_to_spot_time - bombs_time) * 1000,
                                       tasks_time=(tasks_time - move_to_spot_time) * 1000,
                                       printing_time=(printing_time - tasks_time) * 1000))
-        self.last_was_cancelled = False
 
     def compute_state_map(self):
         self.state_map = np.ones_like(self.parser.danger_map) * 4
@@ -269,7 +220,7 @@ class RulePolicy:
         for spot in self.already_occupied_spots:
             unit_map[spot] = math.inf
 
-        search_budget = search_budget_small if self.last_was_cancelled else search_budget_big
+        search_budget = search_budget_big
 
         least_cost_search = LeastCostSearch(unit_map, unit.pos,
                                             exclude_points=self.already_occupied_destinations,
@@ -421,17 +372,13 @@ class RulePolicy:
 
     def schedule_print(self, *args):
         self.debug_print(*args)
-        self.print_queue.append(("Tick #{}!\n".format(self.tick_number),) + args)
+        print(("Tick #{}!\n".format(self.tick_number),) + args)
+        # self.print_queue.append(("Tick #{}!\n".format(self.tick_number),) + args)
 
     def debug_print(self, *args):
         if self.debug:
             print("Tick #{}!\n".format(self.tick_number), args)
 
     async def send_action_acync_impl(self, action, tick_number):
-        if tick_number != self.ticker.tick:
-            self.schedule_print("Action for tick {action_tick} is only sent on {curr_tick}, cancelling".format(
-                action_tick=tick_number, curr_tick=self.ticker.tick
-            ))
-            return
         await action.send(self.client)
         self.schedule_print("Sent action {action} on tick {tick}!".format(action=action, tick=tick_number))

@@ -5,7 +5,7 @@ from unittest import IsolatedAsyncioTestCase
 
 from jsonschema import validate
 
-from game_state import GameState
+from python3.game_state import GameState
 
 
 def copy_object(data):

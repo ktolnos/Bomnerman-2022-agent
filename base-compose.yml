@@ -1,4 +1,4 @@
-version: "3"
+version: "3.2"
 services:
     game-engine:
         image: coderone.azurecr.io/bomberland-engine:2381

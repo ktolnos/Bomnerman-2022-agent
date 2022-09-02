@@ -16,11 +16,9 @@ class Runner:
 
         self._client = GameState(uri)
         self._policy = policy
-        self.ticker = Ticker()
 
-        policy.init(self._client, self.ticker)
+        policy.init(self._client)
 
-        self._pool = ThreadPoolExecutor(max_workers=1)
 
         # any initialization code can go here
         self._client.set_game_tick_callback(self._on_game_tick)
@@ -34,9 +32,5 @@ class Runner:
         loop.run_until_complete(asyncio.wait(tasks))
 
     async def _on_game_tick(self, tick_number, game_state):
-        self.ticker.tick = tick_number
         print("RUNNER: Tick {tick}".format(tick=tick_number))
         self._policy.execute_actions(tick_number, game_state)
-
-
-

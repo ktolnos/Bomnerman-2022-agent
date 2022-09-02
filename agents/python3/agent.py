@@ -3,7 +3,7 @@ import os
 import random
 from typing import Union
 
-from game_state import GameState
+from python3.game_state import GameState
 import asyncio
 import random
 import os
