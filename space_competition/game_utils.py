@@ -99,6 +99,7 @@ class Unit:
     hp: int
     blast_diameter: int
     invincibility_last_tick: int
+    stunned_last_tick: int
 
 
 @dataclass(frozen=True)
@@ -135,3 +136,8 @@ class BombCluster:
 class BombExplosionMapEntry:
     bomb: Bomb
     cluster: BombCluster
+
+def is_invincible_next_tick(unit: Unit, tick):
+    if not unit.invincibility_last_tick:
+        return False
+    return unit.invincibility_last_tick > tick

@@ -18,9 +18,8 @@ class Runner:
         self._policy = policy
 
         policy.init(self._client)
+        #policy.debug = True
 
-
-        # any initialization code can go here
         self._client.set_game_tick_callback(self._on_game_tick)
 
         loop = asyncio.get_event_loop()

@@ -17,7 +17,7 @@ services:
             - TELEMETRY_ENABLED=1
             - TICK_RATE_HZ=10
             - TRAINING_MODE_ENABLED=0
-            - WORLD_SEED=1235
+            - WORLD_SEED=325154 # enclosed world
             - GAME_START_DELAY_MS=500
         deploy:
             resources:
@@ -30,13 +30,9 @@ services:
    ##  Uncomment the following "agent-a" blocks to connect a second agent to the environment
 
     agent-a:
-        build:
-            context: python3
-            dockerfile: Dockerfile.rule.dev
-        volumes:
-            - ./python3:/app
+        image: docker.io/opryzhek/bombermann:newrule2
         environment:
-            - GAME_CONNECTION_STRING=ws://game-engine:3000/?role=agent&agentId=agentA&name=python3-agent-dev
+            - GAME_CONNECTION_STRING=ws://game-engine:3000/?role=agent&agentId=agentA&name=empty-agent-dev
         depends_on:
             - game-engine
         deploy:

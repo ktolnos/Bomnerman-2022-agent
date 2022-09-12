@@ -1,64 +1,64 @@
-version: "3"
+version: "3.2"
 services:
-    game-server:
-        extends:
-            file: base-compose.yml
-            service: game-server
+    game-engine:
+        image: coderone.azurecr.io/bomberland-engine:2381
+        volumes:
+              - type: "bind"
+                source: ./agents/replay.json
+                target: /app/replay.json
         ports:
             - {{PORT}}:3000
         environment:
-            - ADMIN_ROLE_ENABLED=0
+            - ADMIN_ROLE_ENABLED=1
             - AGENT_ID_MAPPING=agentA,agentB
-            - INITIAL_AMMUNITION=3
-            - FIRE_SPAWN_INTERVAL_TICKS=2
-            - GAME_DURATION_TICKS=300
-            - GAME_START_DELAY_MS=500
             - INITIAL_HP=3
+            - PRNG_SEED=1234
             - SHUTDOWN_ON_GAME_END_ENABLED=1
             - TELEMETRY_ENABLED=1
-            - TICK_RATE_HZ=5
+            - TICK_RATE_HZ=20
             - TRAINING_MODE_ENABLED=0
-#            - WORLD_SEED=1234
-        networks:
-            - coderone-tournament
-
-   ###  Uncomment the following "agent-a" blocks to connect a second agent to the environment
-
-    agent-a:
-         extends:
-             file: base-compose.yml
-             # update next line with a service in base-compose.yml to change agent
-             service: nn-agent
-         environment:
-             - GAME_CONNECTION_STRING=ws://game-server:3000/?role=agent&agentId=agentA&name=python3-agent-dev
-             - FWD_MODEL_CONNECTION_STRING=ws://fwd-server-a:6969/?role=admin
-         depends_on:
-             - game-server
-         networks:
-             - coderone-tournament
-         deploy:
-             resources:
-                 limits:
-                     cpus: '2'
-                     memory: 1024m
-
-    agent-b:
-        extends:
-            file: base-compose.yml
-            # update next line with a service in base-compose.yml to change agent
-            service: enemy-agent
-        environment:
-            - GAME_CONNECTION_STRING=ws://game-server:3000/?role=agent&agentId=agentB&name=python3-agent
-            - FWD_MODEL_CONNECTION_STRING=ws://fwd-server-b:6969/?role=admin
-        depends_on:
-            - game-server
-        networks:
-            - coderone-tournament
-        restart: on-failure
+            # - WORLD_SEED=1348
+            - GAME_START_DELAY_MS=500
         deploy:
             resources:
                 limits:
-                    cpus: '2'
-                    memory: 2048m
+                    cpus: "1"
+                    memory: "1024M"
+        networks:
+            - coderone-tournament
+
+    agent-a:
+        image: docker.io/opryzhek/bombermann:newrule2
+        environment:
+            - GAME_CONNECTION_STRING=ws://game-engine:3000/?role=agent&agentId=agentA&name=empty-agent-dev
+        depends_on:
+            - game-engine
+        deploy:
+            resources:
+                limits:
+                    cpus: "1"
+                    memory: "1024M"
+        networks:
+            - coderone-tournament
+
+    agent-b:
+        build:
+            context: ../../../space_competition
+            dockerfile: Dockerfile.rule.dev
+        volumes:
+            - ../../../space_competition:/app
+        environment:
+            - GAME_CONNECTION_STRING=ws://game-engine:3000/?role=agent&agentId=agentB&name=space_competition-agent
+        depends_on:
+            - game-engine
+        deploy:
+            resources:
+                limits:
+                    cpus: "1"
+                    memory: "1024M"
+        networks:
+            - coderone-tournament
+        restart: on-failure
+
 networks:
     coderone-tournament:

@@ -23,11 +23,12 @@ class MoveAction(Action):
     RIGHT = "right"
     ALL = [UP, DOWN, LEFT, RIGHT]
 
-    def __init__(self, unit_id, action=None):
+    def __init__(self, unit_id, action=None, target_pos=None):
         super().__init__(unit_id)
         if action is None:
             action = random.choice(MoveAction.ALL)
         self.action = action
+        self.target_pos = target_pos
 
     async def send(self, client):
         await client.send_move(self.action, self.unit_id)
