@@ -66,7 +66,7 @@ def get_neighbours(grid: np.array, center: Point, include: Point = None, include
         result_list = list(result)
         result_list.append(center)
         return result_list
-    return result
+    return list(result)
 
 
 @dataclass(frozen=True)

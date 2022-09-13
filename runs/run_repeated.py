@@ -48,7 +48,7 @@ def main():
     started = time.time()
     subprocess.Popen("rm -rf tmp && mkdir tmp", shell=True).wait()
     pool = Pool(12)
-    pool.map(run_command, range(24))
+    pool.map(run_command, range(120))
     score = Counter()
     for filename in os.listdir('tmp'):
         with open("tmp/" + filename, 'r') as file:

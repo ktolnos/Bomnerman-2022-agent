@@ -15,7 +15,7 @@ from parser import *
 from parser import Parser
 
 from forward import ForwardModel
-from game_utils import Point, manhattan_distance, blast_r
+from game_utils import Point, is_invincible_next_tick, manhattan_distance, blast_r
 
 
 @dataclass
@@ -93,6 +93,8 @@ class RulePolicy:
 
         self.place_bombs(tick_number)
         self.force_bomb_unit_ids.clear()
+
+        self.suicide_bomb()
         bombs_time = time.time()
 
         self.blow_up_path_to_center(tick_number)
@@ -322,6 +324,7 @@ class RulePolicy:
                 continue
 
             bomb_clusters = self.parser.all_bomb_explosion_map_enemy[unit.pos]
+            print("Placing bomb: checking cluster", unit, bomb_clusters, self.parser.all_bomb_explosion_map_my[unit.pos])
             is_in_enemy_bomb_cluster = False
             if bomb_clusters:
                 for entry in bomb_clusters:
@@ -391,25 +394,27 @@ class RulePolicy:
             for power_up in self.parser.power_ups:
                 unit_map[power_up.get("x"), power_up.get("y")] += power_up_discount
         discount = close_enemy_discount
-        if unit == self.closest_to_center_unit:
+        if unit == self.closest_to_center_unit and self.parser.free_from_endgame_fire <= 81:
             discount = 0
-        if self.parser.danger_map[unit.pos]:
+        if self.parser.danger_map[unit.pos] and not self.parser.has_bomb_map[unit.pos]:
             discount = 0
         for enemy in self.parser.enemy_units:
             draw_cross(unit_map, enemy.pos.x, enemy.pos.y, rad=2, value=discount)
 
-        unit_map[self.parser.center] += endgame_fire_center_discount * unit.hp
-        
-        unit_map[self.parser.center.x - 1::self.parser.center.x + 2,
-        self.parser.center.y - 1::self.parser.center.y + 2] += endgame_fire_center_discount_mass
-        self.debug_print(unit, "added center discounts", unit_map)
+        if self.tick_number > 270:
+            unit_map[self.parser.center] += endgame_fire_center_discount * unit.hp
+            
+            unit_map[self.parser.center.x - 1::self.parser.center.x + 2,
+            self.parser.center.y - 1::self.parser.center.y + 2] += endgame_fire_center_discount_mass
+            self.debug_print(unit, "added center discounts", unit_map)
 
         for spot in self.already_occupied_spots:
-            unit_map[spot] += explosion_danger
+            unit_map[spot] += stand_on_bomb_danger
         self.debug_print(unit, "removed already_occupied_spots", unit_map)
         
         for spot in self.blocked_locations:
-            unit_map[spot] = math.inf
+            if spot != unit.pos:
+                unit_map[spot] += stand_on_bomb_danger
         self.debug_print(unit, "removed blocked_locations", unit_map)
 
         search_budget = search_budget_big
@@ -441,7 +446,7 @@ class RulePolicy:
         #         self.has_no_path_to_center = self.parser.my_unit_ids
         units_with_path = list()
 
-        search_map = np.ones_like(self.parser.wall_map)
+        search_map = np.copy(self.parser.cell_occupation_danger_map) + close_cell_danger
         search_map += self.parser.wall_map * 1000
         search_map += self.parser.endgame_fires_map * 10000
         # search_map += self.parser.danger_map
@@ -628,15 +633,17 @@ class RulePolicy:
                     has_unit_in_lower_part = True
             if has_unit_in_lower_part and has_unit_in_upper_part:
                 return
-            
-            for unit in self.parser.my_units:
+
+            def units_order(unit):
+                return -manhattan_distance(unit.pos, self.parser.center)
+            for unit in sorted(self.parser.my_units, key=units_order):
                 if self.is_busy(unit.id):
                     continue
                 if unit == self.closest_to_center_my:
                     continue
                 target_y_modifier = 1 if has_unit_in_lower_part else -1
                 target_y = self.parser.center.y + target_y_modifier
-                search_map = np.ones_like(self.parser.wall_map)
+                search_map = np.copy(self.parser.cell_occupation_danger_map) + close_cell_danger
                 search_map += self.parser.wall_map * 1000
                 search_map += self.parser.endgame_fires_map * 10000
                 # search_map += self.parser.danger_map
@@ -759,6 +766,70 @@ class RulePolicy:
         for map in maps_to_mark:
             self.parser.raise_danger_for_potential_explosion(map, pos, explosion_danger, blast_rad)
 
+    def suicide_bomb(self):
+        for unit in self.parser.my_units:
+            if self.is_busy(unit.id):
+                continue
+            if not is_invincible_next_tick(unit, self.tick_number):
+                continue
+            enemy_i_can_hit_now = self.parser.can_hit_enemy(unit)
+            #EXP2
+            if enemy_i_can_hit_now and not is_invincible_next_tick(enemy_i_can_hit_now, self.tick_number):
+                continue # I didn't hit him for reason
+            #/EXP2
+            max_distance = unit.invincibility_last_tick - self.tick_number - 2
+            explosions_near_enemy = set() 
+            for enemy in self.parser.enemy_units:
+                if is_invincible_next_tick(enemy, self.tick_number):
+                    continue
+                def check_explosion(x, y):
+                    if x < 0 or x >= self.parser.w or y < 0 or y >= self.parser.h:
+                        return True
+                    if self.parser.wall_map[x, y]:
+                        return True
+                    if self.parser.danger_map[x, y] >= explosion_danger:
+                        if manhattan_distance(Point(x, y), unit.pos) <= max_distance:
+                            explosions_near_enemy.add(Point(x, y))
+                        return False
+                    return False
+                rad = blast_r(unit.blast_diameter)
+                x, y = enemy.pos
+                for i in range(1, rad):
+                    if check_explosion(x+i, y):
+                        break
+                for i in range(1, rad):
+                    if check_explosion(x-i, y):
+                        break
+                for i in range(1, rad):
+                    if check_explosion(x, y+i):
+                        break
+                for i in range(1, rad):
+                    if check_explosion(x, y-i):
+                        break
+            self.debug_print("Possible suicide pos", explosions_near_enemy)
+            if not explosions_near_enemy:
+                continue
+            walk_map = self.parser.walkable_map + np.ones_like(self.parser.walkable_map)
+            best_path = None
+            best_cost = math.inf
+            for point in explosions_near_enemy:
+                path, cost = AStar(walk_map, unit.pos, point).run()
+                if cost < best_cost:
+                    best_cost = cost
+                    best_path = path
+            self.debug_print("Best path is", best_cost, best_path)
+            if best_cost == math.inf:
+                continue
+            if best_cost > max_distance: # can't hit and run off
+                self.debug_print("Best cost is too great", best_cost, max_distance)
+                continue
+            if len(best_path) <= 1:
+                continue
+            move = self.plan_move(unit.id, best_path)
+            move_cell = best_path[1] if move else unit.pos
+            return self.execute_move(unit.id, move, move_cell, self.tick_number)
+
+
     def is_busy(self, unit_id):
         return unit_id in self.busy
 
@@ -773,6 +844,11 @@ class RulePolicy:
     def debug_print(self, *args):
         if self.debug:
             print("Tick #{}!\n".format(self.tick_number), *args)
+        else:
+            for arg in args:
+                if not isinstance(arg, np.ndarray) or arg.dtype == object:
+                    continue
+                repr(arg)
 
     async def send_action_acync_impl(self, action, tick_number):
         await action.send(self.client)

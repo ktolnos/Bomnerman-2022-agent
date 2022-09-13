@@ -35,6 +35,8 @@ class EndgameFireSimulator2:
         multiplier = endgame_fire_base_multiplier if n_fires == 0 else endgame_fire_else
         fire_danger_steps.clip(0, out=fire_danger_steps)  # replace negatives with zero
         fire_danger_steps[fire_danger_steps == 0] = 0.35
+        fire_danger_steps[fire_danger_steps == 1] = 0.45
+        fire_danger_steps[fire_danger_steps == 2] = 0.55
         fire_danger = 1. / fire_danger_steps
         np.square(fire_danger, out=fire_danger)
         return fire_danger * multiplier

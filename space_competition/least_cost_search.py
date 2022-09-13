@@ -5,7 +5,7 @@ import numpy as np
 
 from game_utils import Point, PriorityQueue, get_neighbours
 
-
+exclude_point_stay_cost = 10
 class LeastCostSearch:
 
     def __init__(self, grid: np.ndarray, start: Point, exclude_points=set(), search_budget: int = 100):
@@ -48,9 +48,9 @@ class LeastCostSearch:
         min_cost = math.inf
         min_cost_point = None
         for p, length in path_len.items():
-            if p in self.exclude_points:
-                continue
             p_stay_cost = self.grid[p.x, p.y]
+            if p in self.exclude_points:
+                p_stay_cost += exclude_point_stay_cost
             p_cost = cost_so_far[p] + p_stay_cost + max(0, p_stay_cost * (horizon - length - 1))
             min_cost_path_len = -1 if min_cost_point is None else path_len[min_cost_point]
             if p_cost < min_cost or (p_cost == min_cost and path_len[p] > min_cost_path_len):
