@@ -226,7 +226,7 @@ class RulePolicy:
             self.blow_up_if_worth_it(enemy.pos, tick_number, False)
 
     def blow_up_if_worth_it(self, pos: Point, tick_number, blow_if_equal):
-        bombs_list = self.parser.all_bomb_explosion_map[pos]
+        bombs_list = self.parser.all_bomb_explosion_map_my[pos]
         if not bombs_list:
             return False
         for bomb_entry in bombs_list:
@@ -237,7 +237,7 @@ class RulePolicy:
                     enemy_weight = 2 if e == self.closest_to_center_unit else 1
                     if e.invincibility_last_tick and e.invincibility_last_tick > self.tick_number:
                         enemy_weight *= 0.1
-                    e_bomb_entries: List[BombExplosionMapEntry] = self.parser.all_bomb_explosion_map[e.pos]
+                    e_bomb_entries: List[BombExplosionMapEntry] = self.parser.all_bomb_explosion_map_my[e.pos]
                     if not e_bomb_entries:
                         continue
                     for e_bomb_entry in e_bomb_entries:
@@ -249,7 +249,7 @@ class RulePolicy:
                     my_weight = 2 if u == self.closest_to_center_unit else 1
                     if u.invincibility_last_tick and u.invincibility_last_tick > self.tick_number:
                         my_weight *= 0.1
-                    u_bomb_entries: List[BombExplosionMapEntry] = self.parser.all_bomb_explosion_map[u.pos]
+                    u_bomb_entries: List[BombExplosionMapEntry] = self.parser.all_bomb_explosion_map_my[u.pos]
                     if not u_bomb_entries:
                         continue
                     for u_bomb_entry in u_bomb_entries:
@@ -321,7 +321,7 @@ class RulePolicy:
                 self.debug_print("Placing bomb", unit, "not free")
                 continue
 
-            bomb_clusters = self.parser.all_bomb_explosion_map[unit.pos]
+            bomb_clusters = self.parser.all_bomb_explosion_map_enemy[unit.pos]
             is_in_enemy_bomb_cluster = False
             if bomb_clusters:
                 for entry in bomb_clusters:

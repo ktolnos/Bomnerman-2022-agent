@@ -30,7 +30,7 @@ services:
    ##  Uncomment the following "agent-a" blocks to connect a second agent to the environment
 
     agent-a:
-        image: docker.io/opryzhek/bombermann:newrule2
+        image: docker.io/opryzhek/bombermann:newrule3
         environment:
             - GAME_CONNECTION_STRING=ws://game-engine:3000/?role=agent&agentId=agentA&name=empty-agent-dev
         depends_on:

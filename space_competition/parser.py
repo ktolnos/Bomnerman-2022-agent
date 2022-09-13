@@ -1,3 +1,4 @@
+from copy import deepcopy
 from re import L
 from tabnanny import check
 from game_utils import *
@@ -55,7 +56,8 @@ class Parser:
         self.center = Point(w // 2, h // 2)
         self.walkable_map = np.zeros((w, h))
         self.cell_occupation_danger_map = np.zeros((w, h))
-        self.all_bomb_explosion_map = np.zeros((w, h), dtype=object)
+        self.all_bomb_explosion_map_my = np.zeros((w, h), dtype=object)
+        self.all_bomb_explosion_map_enemy = np.zeros((w, h), dtype=object)
         self.has_bomb_map = np.zeros((w, h))
         self.danger_map = np.zeros((w, h))
         self.power_ups = []
@@ -72,7 +74,8 @@ class Parser:
         self.units_map = np.zeros((w, h), dtype=object)
         self.dead_units_map = np.zeros((w, h), dtype=object)
         self.unit_id_to_unit = dict()
-        self.cluster_to_bombs = dict()
+        self.cluster_to_bombs_my = dict()
+        self.cluster_to_bombs_enemy = dict()
         self.wall_map = np.zeros_like(self.walkable_map)
         self.free_from_endgame_fire = 0
 
@@ -171,9 +174,12 @@ class Parser:
                     my_bomb_that_can_trigger=bomb if is_my_bomb and is_armed else None
                 )
                 map_entry = BombExplosionMapEntry(bomb, cluster)
-                self.all_bomb_explosion_map[bomb.pos] = [map_entry]
+                enemy_entry = deepcopy(map_entry)
+                self.all_bomb_explosion_map_my[bomb.pos] = [map_entry]
+                self.all_bomb_explosion_map_enemy[bomb.pos] = [enemy_entry]
                 self.has_bomb_map[bomb.pos] = 1
-                self.cluster_to_bombs[cluster] = [map_entry]
+                self.cluster_to_bombs_my[cluster] = [map_entry]
+                self.cluster_to_bombs_enemy[cluster] = [enemy_entry]
 
                 if is_my_bomb:
                     self.my_bombs.append(bomb)
@@ -223,71 +229,82 @@ class Parser:
         self.process_bombs()
         #print(self.bombs)
         #print(self.all_bomb_explosion_map)
-        for x, y in np.ndindex(self.all_bomb_explosion_map.shape):
-            if self.all_bomb_explosion_map[x, y]:
-                max_danger = 0
-                for map_entry in self.all_bomb_explosion_map[x, y]:
+        for x, y in np.ndindex(self.all_bomb_explosion_map_enemy.shape):
+            enemy_entries = self.all_bomb_explosion_map_enemy[x, y]
+            my_entries = self.all_bomb_explosion_map_my[x, y]
+            max_danger = 0
+            if enemy_entries:
+                for map_entry in enemy_entries:
                     max_danger = max(max_danger, map_entry.cluster.danger)
-                if max_danger != 0:
-                    draw_cross(self.cell_occupation_danger_map, x, y, rad=2, value=close_cell_danger)
-                self.danger_map[x, y] += max_danger
+            if my_entries:
+                for map_entry in my_entries:
+                    max_danger = max(max_danger, map_entry.cluster.danger)
+            if max_danger != 0:
+                draw_cross(self.cell_occupation_danger_map, x, y, rad=2, value=close_cell_danger)
+            self.danger_map[x, y] += max_danger
+
 
     def process_bombs(self):
-        arr = self.all_bomb_explosion_map
-        for bomb in self.bombs:
+        self.process_bombs_helper(self.all_bomb_explosion_map_my, self.my_bombs, self.cluster_to_bombs_my)
+        self.process_bombs_helper(self.all_bomb_explosion_map_enemy, self.enemy_bombs, self.cluster_to_bombs_enemy)
+
+    def process_bombs_helper(self, all_bomb_explosion_map, bombs, cluster_to_bombs):
+        arr = all_bomb_explosion_map
+        for bomb in bombs:
             x, y = bomb.pos
             rad = blast_r(bomb.blast_diameter)
-            entry = self.all_bomb_explosion_map[bomb.pos][0]
+            entry = all_bomb_explosion_map[bomb.pos][0]
             #now intersection entries are not max of both
             for i in range(1, rad):
                 if x + i >= arr.shape[0]:
                     break
-                if self.process_bomb(x + i, y, entry):
+                if self.process_bomb(x + i, y, entry, arr, cluster_to_bombs):
                     break
             for i in range(1, rad):
                 if x - i < 0:
                     break
-                if self.process_bomb(x - i, y, entry):
+                if self.process_bomb(x - i, y, entry, arr, cluster_to_bombs):
                     break
             for i in range(1, rad):
                 if y + i >= arr.shape[1]:
                     break
-                if self.process_bomb(x, y + i, entry):
+                if self.process_bomb(x, y + i, entry, arr, cluster_to_bombs):
                     break
             for i in range(1, rad):
                 if y - i < 0:
                     break
-                if self.process_bomb(x, y - i, entry):
+                if self.process_bomb(x, y - i, entry, arr, cluster_to_bombs):
                     break
 
-    def process_bomb(self, x, y, entry) -> bool:
+
+    def process_bomb(self, x, y, entry,  all_bomb_explosion_map, cluster_to_bombs) -> bool:
         """returns true if stamled across other bomb or wall and cycle should end"""
-        other = self.all_bomb_explosion_map[x, y]
+        other = all_bomb_explosion_map[x, y]
        
         if other and self.has_bomb_map[x, y]:
-            self.merge(entry, other[0])
+            self.merge(entry, other[0], cluster_to_bombs)
             return False # it seems in latest versions bombs go through  other bombs
         if self.wall_map[x, y] != 0 and not self.dead_units_map[x, y]: # explosions pass through dead units
             return True
-        if not self.all_bomb_explosion_map[x, y]:
-            self.all_bomb_explosion_map[x, y] = [] 
-        self.all_bomb_explosion_map[x, y].append(entry)
+        if not all_bomb_explosion_map[x, y]:
+            all_bomb_explosion_map[x, y] = [] 
+        all_bomb_explosion_map[x, y].append(entry)
         return False
 
-    def merge(self, bomb_map_entry: BombExplosionMapEntry, other: BombExplosionMapEntry):
+    def merge(self, bomb_map_entry: BombExplosionMapEntry, other: BombExplosionMapEntry, cluster_to_bombs):
         other_cluster = other.cluster
         my_cluster = bomb_map_entry.cluster
         new_cluster = bomb_map_entry.cluster.merge_with(other.cluster)
         new_cluster_entries = []
-        for other_cluster_entry in self.cluster_to_bombs[other_cluster]:
+        for other_cluster_entry in cluster_to_bombs[other_cluster]:
             other_cluster_entry.cluster = new_cluster
             new_cluster_entries.append(other_cluster_entry)
-        for cluster_entry in self.cluster_to_bombs[my_cluster]:
+        for cluster_entry in cluster_to_bombs[my_cluster]:
             cluster_entry.cluster = new_cluster
             new_cluster_entries.append(cluster_entry)
-        self.cluster_to_bombs[other_cluster].clear()
-        self.cluster_to_bombs[my_cluster].clear()
-        self.cluster_to_bombs[new_cluster] = new_cluster_entries
+        cluster_to_bombs[other_cluster].clear()
+        cluster_to_bombs[my_cluster].clear()
+        cluster_to_bombs[new_cluster] = new_cluster_entries
 
     def parse_unit(self, unit_id, target_list, target_ids_list):
         unit = self.units.get(unit_id)
