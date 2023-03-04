@@ -324,7 +324,7 @@ class RulePolicy:
                 continue
 
             bomb_clusters = self.parser.all_bomb_explosion_map_enemy[unit.pos]
-            print("Placing bomb: checking cluster", unit, bomb_clusters, self.parser.all_bomb_explosion_map_my[unit.pos])
+            # print("Placing bomb: checking cluster", unit, bomb_clusters, self.parser.all_bomb_explosion_map_my[unit.pos])
             is_in_enemy_bomb_cluster = False
             if bomb_clusters:
                 for entry in bomb_clusters:
