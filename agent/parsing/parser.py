@@ -1,60 +1,10 @@
 from copy import deepcopy
 
+from parsing.bombs import Bomb, BombCluster, BombExplosionMapEntry
+from parsing.settings import *
+from utils.grid import draw_cross, check_free
 from utils.game_utils import *
 from parsing.gamestate import ParsedGameState, owner_unit_id
-
-search_budget_big = 50
-search_budget_small = 25
-search_horizon = 30
-
-endgame_fire_start_danger = 3.0
-endgame_fire_end_danger = 0.0  # danger of the endgame fire in the center
-endgame_fire_base_multiplier = 0.1
-endgame_fire_else = 40
-endgame_fire_endgame_multiplier_per_fire = 0.02
-endgame_fire_center_discount_mass = -0.2
-endgame_fire_center_discount = -0.2  # gets multiplied by HP.
-
-my_bomb_starting_danger = 15
-enemy_bomb_starting_danger = 500
-enemy_potential_bomb_danger = 100
-bomb_end_danger_ticks = 5
-unarmed_bomb_danger_modifier_enemy = 1 / search_horizon - 0.0001
-unarmed_bomb_danger_modifier_my = 0.9
-bomb_end_danger_max = 550
-
-close_cell_danger = 0.1
-
-bomb_arming_ticks = 5
-power_up_discount = -0.5
-close_enemy_discount = -0.2
-close_to_center_enemy_discount = -2
-center_occupied_ammo_discount = 0.1
-enemy_in_danger_discount = -0.1
-enemy_in_danger_one_cell_discount = -0.5
-move_on_occupied_spot_penalty = my_bomb_starting_danger - 1
-explosion_danger = 100000
-stand_on_bomb_danger = 999
-enclosed_bomb_danger = stand_on_bomb_danger + 5  # shouldn't move to occupied spot
-possibly_enclosed_bomb_danger = stand_on_bomb_danger - 5
-
-close_enemy_danger = 1
-
-
-def merge(bomb_map_entry: BombExplosionMapEntry, other: BombExplosionMapEntry, cluster_to_bombs):
-    other_cluster = other.cluster
-    my_cluster = bomb_map_entry.cluster
-    new_cluster = bomb_map_entry.cluster.merge_with(other.cluster)
-    new_cluster_entries = []
-    for other_cluster_entry in cluster_to_bombs[other_cluster]:
-        other_cluster_entry.cluster = new_cluster
-        new_cluster_entries.append(other_cluster_entry)
-    for cluster_entry in cluster_to_bombs[my_cluster]:
-        cluster_entry.cluster = new_cluster
-        new_cluster_entries.append(cluster_entry)
-    cluster_to_bombs[other_cluster].clear()
-    cluster_to_bombs[my_cluster].clear()
-    cluster_to_bombs[new_cluster] = new_cluster_entries
 
 
 class Parser:
@@ -145,82 +95,83 @@ class Parser:
             draw_cross(self.cell_occupation_danger_map, coordinates[0], coordinates[1], rad=2,
                        value=close_cell_danger)
             if e_type == "b":
-                bomb_placed_tick = entity.get("created")
-                bomb_will_explode_tick = entity.get("expires")
-                owner_id = entity.get(owner_unit_id)
-                owner = self.unit_id_to_unit.get(owner_id, None)
-                is_owner_stunned = owner and owner.stunned_last_tick and owner.stunned_last_tick >= tick_number
-                is_armed = tick_number - bomb_placed_tick > bomb_arming_ticks and owner and not is_owner_stunned
-
-                bomb = Bomb(
-                    Point(*coordinates),
-                    entity.get("blast_diameter"),
-                    owner_id,
-                    is_armed
-                )
-                self.bombs.append(bomb)
-
-                is_my_bomb = bomb.owner_unit_id in my_units
-
-                base_danger = my_bomb_starting_danger if is_my_bomb else enemy_bomb_starting_danger
-
-                if not is_armed:
-                    owner_will_be_stunned_next_tick = owner and owner.stunned_last_tick and owner.stunned_last_tick >= tick_number + 1
-                    will_be_armed_next_tick = tick_number + 1 - bomb_placed_tick > bomb_arming_ticks and not owner_will_be_stunned_next_tick
-                    if not will_be_armed_next_tick:
-                        base_danger *= unarmed_bomb_danger_modifier_my if is_my_bomb else unarmed_bomb_danger_modifier_enemy
-
-                end_danger = 0
-                if tick_number >= bomb_will_explode_tick - bomb_end_danger_ticks:
-                    end_danger = bomb_end_danger_max * (1 - (bomb_will_explode_tick - tick_number - 1) /
-                                                        bomb_end_danger_ticks)
-                bomb_danger = base_danger + end_danger
-
-                cluster = BombCluster(
-                    bomb.pos,
-                    bomb_danger,
-                    is_armed,
-                    is_my=is_my_bomb,
-                    is_enemy=not is_my_bomb,
-                    ticks_till_explode=bomb_will_explode_tick - tick_number,
-                    my_bomb_that_can_trigger=bomb if is_my_bomb and is_armed else None
-                )
-                map_entry = BombExplosionMapEntry(bomb, cluster)
-                enemy_entry = deepcopy(map_entry)
-                self.all_bomb_explosion_map_my[bomb.pos] = [map_entry]
-                self.all_bomb_explosion_map_enemy[bomb.pos] = [enemy_entry]
-                self.has_bomb_map[bomb.pos] = 1
-                self.cluster_to_bombs_my[cluster] = [map_entry]
-                self.cluster_to_bombs_enemy[cluster] = [enemy_entry]
-
-                if is_my_bomb:
-                    self.my_bombs.append(bomb)
-                    if is_armed:
-                        self.my_armed_bombs.append(bomb)
-                else:
-                    self.enemy_bombs.append(bomb)
+                self.parse_bomb(entity, coordinates)
             if e_type == "x":
                 if "expires" not in entity:
                     self.endgame_fires += 1
                     self.endgame_fires_map[coordinates] = 1
                 self.danger_map[coordinates] = explosion_danger
-
             if e_type == "m":
                 self.wall_map[coordinates] = math.inf
             if e_type == "w" or e_type == "o":
                 self.wall_map[coordinates] = entity.get("hp")
 
         self.free_from_endgame_fire = self.w * self.h - self.endgame_fires
-        for enemy in self.enemy_units:
-            if self.danger_map[enemy.pos] >= explosion_danger:  # enemies can spawn bombs
-                self.raise_danger_for_potential_explosion(self.danger_map, enemy.pos, enemy_potential_bomb_danger,
-                                                          blast_r(enemy.blast_diameter))
-                for neigbour in get_neighbours(self.danger_map, enemy.pos):
-                    if not self.walkable_map[neigbour] and self.danger_map[neigbour] >= explosion_danger:
-                        self.raise_danger_for_potential_explosion(self.danger_map, enemy.pos,
-                                                                  enemy_potential_bomb_danger,
-                                                                  blast_r(enemy.blast_diameter))
 
+        self.add_enemy_suicide_bomb_danger()
+        self.add_enclosed_bomb_danger()
+        self.process_bombs()
+        self.add_enemy_bombs_danger()
+
+    def parse_bomb(self, entity, coordinates):
+        bomb_placed_tick = entity.get("created")
+        bomb_will_explode_tick = entity.get("expires")
+        owner_id = entity.get(owner_unit_id)
+        owner = self.unit_id_to_unit.get(owner_id, None)
+        is_owner_stunned = owner and owner.stunned_last_tick and owner.stunned_last_tick >= self.gs.tick
+        is_armed = self.gs.tick - bomb_placed_tick > bomb_arming_ticks and owner and not is_owner_stunned
+
+        bomb = Bomb(
+            Point(*coordinates),
+            entity.get("blast_diameter"),
+            owner_id,
+            is_armed
+        )
+        self.bombs.append(bomb)
+
+        is_my_bomb = bomb.owner_unit_id in self.my_unit_ids
+
+        base_danger = my_bomb_starting_danger if is_my_bomb else enemy_bomb_starting_danger
+
+        if not is_armed:
+            owner_will_be_stunned_next_tick = owner and owner.stunned_last_tick and\
+                                              owner.stunned_last_tick >= self.gs.tick + 1
+            will_be_armed_next_tick = self.gs.tick + 1 - bomb_placed_tick > bomb_arming_ticks and not\
+                owner_will_be_stunned_next_tick
+            if not will_be_armed_next_tick:
+                base_danger *= unarmed_bomb_danger_modifier_my if is_my_bomb else unarmed_bomb_danger_modifier_enemy
+
+        end_danger = 0
+        if self.gs.tick >= bomb_will_explode_tick - bomb_end_danger_ticks:
+            end_danger = bomb_end_danger_max * (1 - (bomb_will_explode_tick - self.gs.tick - 1) /
+                                                bomb_end_danger_ticks)
+        bomb_danger = base_danger + end_danger
+
+        cluster = BombCluster(
+            bomb.pos,
+            bomb_danger,
+            is_armed,
+            is_my=is_my_bomb,
+            is_enemy=not is_my_bomb,
+            ticks_till_explode=bomb_will_explode_tick - self.gs.tick,
+            my_bomb_that_can_trigger=bomb if is_my_bomb and is_armed else None
+        )
+        map_entry = BombExplosionMapEntry(bomb, cluster)
+        enemy_entry = deepcopy(map_entry)
+        self.all_bomb_explosion_map_my[bomb.pos] = [map_entry]
+        self.all_bomb_explosion_map_enemy[bomb.pos] = [enemy_entry]
+        self.has_bomb_map[bomb.pos] = 1
+        self.cluster_to_bombs_my[cluster] = [map_entry]
+        self.cluster_to_bombs_enemy[cluster] = [enemy_entry]
+
+        if is_my_bomb:
+            self.my_bombs.append(bomb)
+            if is_armed:
+                self.my_armed_bombs.append(bomb)
+        else:
+            self.enemy_bombs.append(bomb)
+
+    def add_enclosed_bomb_danger(self):
         for bomb in self.bombs:
             for neighbour in get_neighbours(self.danger_map, bomb.pos):
                 if self.cell_occupation_danger_map[neighbour] >= 4 * close_cell_danger:
@@ -235,8 +186,18 @@ class Parser:
                                     self.danger_map[neighbour] += possibly_enclosed_bomb_danger
                                     break
 
-        self.process_bombs()
+    def add_enemy_suicide_bomb_danger(self):
+        for enemy in self.enemy_units:
+            if self.danger_map[enemy.pos] >= explosion_danger:  # enemies can spawn bombs
+                self.raise_danger_for_potential_explosion(self.danger_map, enemy.pos, enemy_potential_bomb_danger,
+                                                          blast_r(enemy.blast_diameter))
+                for neigbour in get_neighbours(self.danger_map, enemy.pos):
+                    if not self.walkable_map[neigbour] and self.danger_map[neigbour] >= explosion_danger:
+                        self.raise_danger_for_potential_explosion(self.danger_map, enemy.pos,
+                                                                  enemy_potential_bomb_danger,
+                                                                  blast_r(enemy.blast_diameter))
 
+    def add_enemy_bombs_danger(self):
         for x, y in np.ndindex(self.all_bomb_explosion_map_enemy.shape):
             enemy_entries = self.all_bomb_explosion_map_enemy[x, y]
             my_entries = self.all_bomb_explosion_map_my[x, y]
@@ -288,7 +249,7 @@ class Parser:
         other = all_bomb_explosion_map[x, y]
 
         if other and self.has_bomb_map[x, y]:
-            merge(entry, other[0], cluster_to_bombs)
+            entry.merge_with(other[0], cluster_to_bombs)
             return False  # it seems in latest versions bombs go through  other bombs
         if self.wall_map[x, y] != 0 and not self.dead_units_map[x, y]:  # explosions pass through dead units
             return True
@@ -319,122 +280,6 @@ class Parser:
             )
             target_list.append(res)
             self.unit_id_to_unit[unit_id] = res
-
-    def check_free(self, p, rad, bomb_rad, ignore_unit_id=None) -> bool:
-        """
-        :return: True if cross has at least one direction free
-        """
-        x, y = p
-        for i in range(1, rad):
-            free, stop_iter = self.check_cell_free(x + i, y, i >= bomb_rad, True, ignore_unit_id)
-            if free:
-                return True
-            if stop_iter:
-                break
-        for i in range(1, rad):
-            free, stop_iter = self.check_cell_free(x - i, y, i >= bomb_rad, True, ignore_unit_id)
-            if free:
-                return True
-            if stop_iter:
-                break
-        for i in range(1, rad):
-            free, stop_iter = self.check_cell_free(x, y + i, i >= bomb_rad, False, ignore_unit_id)
-            if free:
-                return True
-            if stop_iter:
-                break
-        for i in range(1, rad):
-            free, stop_iter = self.check_cell_free(x, y - i, i >= bomb_rad, False, ignore_unit_id)
-            if free:
-                return True
-            if stop_iter:
-                break
-        return False
-
-    def check_cell_free(self, x, y, count_any_non_danger_wall_as_free, is_horizontal, ignore_unit_id):
-        if x < 0 or x >= self.w or y < 0 or y >= self.h:
-            return False, True  # not free and stop iter
-        if self.walkable_map[x, y] != 0 or self.danger_map[x, y] != 0:
-            return False, True  # not free and stop iter
-        unit = self.units_map[x, y]
-        if unit and unit.id != ignore_unit_id:
-            return False, True  # not free and stop iter
-        for enemy in self.enemy_units:
-            if manhattan_distance(Point(x, y), enemy.pos) <= 1:
-                return False, True
-        if count_any_non_danger_wall_as_free:
-            return True, True  # free and stop iter
-        side_wall_1 = Point(x, y + 1) if is_horizontal else Point(x + 1, y)
-        if self.check_side_wall(side_wall_1, ignore_unit_id):
-            return True, True
-        side_wall_2 = Point(x, y - 1) if is_horizontal else Point(x - 1, y)
-        if self.check_side_wall(side_wall_2, ignore_unit_id):
-            return True, True
-
-        if self.cell_occupation_danger_map[x, y] <= close_cell_danger * 1:
-            return True, True  # free and stop iter
-        return False, False  # not free, look further
-
-    def check_side_wall(self, point, ignore_unit_id):
-        if point.x < 0 or point.y < 0 or point.x >= self.w or point.y >= self.h:
-            return False
-        if self.walkable_map[point] != 0 or self.danger_map[point] != 0:
-            return False
-        unit = self.units_map[point]
-        if unit and unit.id != ignore_unit_id:
-            return False
-        for enemy in self.enemy_units:
-            if manhattan_distance(point, enemy.pos) == 1:
-                return False
-        return True
-
-    def can_hit_enemy(self, unit) -> Unit:  # returns enemy or none
-        def has_enemy(x, y):
-            if x < 0 or x >= self.w or y < 0 or y >= self.h:
-                return None, True
-            if self.wall_map[x, y] != 0:
-                return None, True
-            for enemy in self.enemy_units:
-                if enemy.pos == Point(x, y):
-                    return enemy, False
-            return None, False
-
-        rad = blast_r(unit.blast_diameter)
-        x, y = unit.pos
-        enemy_found = None
-        for i in range(rad):
-            enemy, stop_iter = has_enemy(x + i, y)
-            if enemy:
-                if not is_invincible_next_tick(enemy, self.gs.tick):
-                    return enemy
-                enemy_found = enemy
-            if stop_iter:
-                break
-        for i in range(rad):
-            enemy, stop_iter = has_enemy(x - i, y)
-            if enemy:
-                if not is_invincible_next_tick(enemy, self.gs.tick):
-                    return enemy
-                enemy_found = enemy
-            if stop_iter:
-                break
-        for i in range(rad):
-            enemy, stop_iter = has_enemy(x, y + i)
-            if enemy:
-                if not is_invincible_next_tick(enemy, self.gs.tick):
-                    return enemy
-                enemy_found = enemy
-            if stop_iter:
-                break
-        for i in range(rad):
-            enemy, stop_iter = has_enemy(x, y - i)
-            if enemy:
-                if not is_invincible_next_tick(enemy, self.gs.tick):
-                    return enemy
-                enemy_found = enemy
-            if stop_iter:
-                break
-        return enemy_found
 
     def raise_danger_for_potential_explosion(self, arr, pos, danger, rad):
         def raise_danger(x, y):
@@ -470,7 +315,8 @@ class Parser:
             other = self.units_map[x, y]
             if other and other.id != unit.id and other.id in self.my_unit_ids:
                 return False
-            return self.check_free(Point(x, y), rad, blast_rad, unit.id)
+            return check_free(self.w, self.h, self.walkable_map, self.danger_map, self.units_map, self.enemy_units,
+                              self.cell_occupation_danger_map, Point(x, y), rad, blast_rad, unit.id)
 
         check_map = np.zeros_like(self.walkable_map)
         for x, y in np.ndindex(self.all_bomb_explosion_map.shape):
@@ -478,26 +324,3 @@ class Parser:
         return check_map
 
 
-def draw_cross(arr, x, y, rad, value, draw_cross_four_times=False):
-    arr[x, y] += value * 4 if draw_cross_four_times else value
-    for i in range(1, rad):
-        if x + i < arr.shape[0]:
-            arr[x + i, y] += value
-        if x - i >= 0:
-            arr[x - i, y] += value
-        if y + i < arr.shape[1]:
-            arr[x, y + i] += value
-        if y - i >= 0:
-            arr[x, y - i] += value
-
-
-def draw_cross_assign(arr, x, y, rad, value):
-    for i in range(rad):
-        if x + i < arr.shape[0]:
-            arr[x + i, y] = value
-        if x - i >= 0:
-            arr[x - i, y] = value
-        if y + i < arr.shape[1]:
-            arr[x, y + i] = value
-        if y - i >= 0:
-            arr[x, y - i] = value

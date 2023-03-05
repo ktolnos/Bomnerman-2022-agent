@@ -102,42 +102,6 @@ class Unit:
     stunned_last_tick: int
 
 
-@dataclass(frozen=True)
-class Bomb:
-    pos: Point
-    blast_diameter: int
-    owner_unit_id: str
-    is_armed: bool
-
-
-@dataclass(frozen=True)
-class BombCluster:
-    start: Point
-    danger: float
-    is_armed: bool
-    is_my: bool
-    is_enemy: bool
-    ticks_till_explode: int
-    my_bomb_that_can_trigger: Bomb
-
-    def merge_with(self, other: BombCluster) -> BombCluster:
-        return BombCluster(
-            self.start,
-            max(self.danger, other.danger),
-            self.is_armed or other.is_armed,
-            self.is_my or other.is_my,
-            self.is_enemy or other.is_enemy,
-            min(self.ticks_till_explode, other.ticks_till_explode),
-            self.my_bomb_that_can_trigger if self.my_bomb_that_can_trigger else other.my_bomb_that_can_trigger,
-        )
-
-
-@dataclass(frozen=False)
-class BombExplosionMapEntry:
-    bomb: Bomb
-    cluster: BombCluster
-
-
 def is_invincible_next_tick(unit: Unit, tick):
     if not unit.invincibility_last_tick:
         return False

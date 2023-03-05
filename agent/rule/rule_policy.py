@@ -10,7 +10,9 @@ from parsing.parser import *
 from parsing.parser import Parser
 
 from simulation.forward_model import ForwardModel
+from utils.grid import draw_cross, check_free
 from utils.game_utils import Point, is_invincible_next_tick, manhattan_distance, blast_r
+from utils.policy import can_hit_enemy
 
 
 @dataclass
@@ -283,7 +285,7 @@ class RulePolicy:
             if stands_on_bomb:
                 self.debug_print("place_bombs stands_on_bomb", unit)
                 continue
-            enemy_to_hit = self.parser.can_hit_enemy(unit)
+            enemy_to_hit = can_hit_enemy(unit, self.parser)
             is_enemy_invincible = enemy_to_hit and is_invincible_next_tick(enemy_to_hit, tick_number)
 
             if self.closest_to_center_unit == self.closest_to_center_enemy and \
@@ -314,7 +316,9 @@ class RulePolicy:
                 self.debug_print(tick_number, "Placing bomb", unit, "is closest to center")
                 continue
 
-            if not self.parser.check_free(unit.pos, blast_r(unit.blast_diameter) + 1, blast_r(unit.blast_diameter)):
+            if not check_free(self.parser.w, self.parser.h, self.parser.walkable_map, self.parser.danger_map,
+                              self.parser.units_map, self.parser.enemy_units, self.parser.cell_occupation_danger_map,
+                              unit.pos, blast_r(unit.blast_diameter) + 1, blast_r(unit.blast_diameter)):
                 self.debug_print("Placing bomb", unit, "not free")
                 continue
 
@@ -527,9 +531,15 @@ class RulePolicy:
             if self.parser.wall_map[next_pos.x, next_pos.y] and self.bombs_count < 3:
                 if self.is_my_unit_near(unit.pos, equals_is_true=False):
                     continue
-                if not self.parser.check_free(unit.pos, blast_r(unit.blast_diameter) + 1, blast_r(unit.blast_diameter)):
+                if not check_free(self.parser.w, self.parser.h, self.parser.walkable_map, self.parser.danger_map,
+                                  self.parser.units_map, self.parser.enemy_units,
+                                  self.parser.cell_occupation_danger_map, unit.pos, blast_r(unit.blast_diameter) + 1,
+                                  blast_r(unit.blast_diameter)):
                     for neighbour in get_neighbours(search_map, unit.pos):
-                        if self.parser.check_free(neighbour, blast_r(unit.blast_diameter) + 1, blast_r(unit.blast_diameter), unit.id):
+                        if check_free(self.parser.w, self.parser.h, self.parser.walkable_map, self.parser.danger_map,
+                                      self.parser.units_map, self.parser.enemy_units,
+                                      self.parser.cell_occupation_danger_map, neighbour,
+                                      blast_r(unit.blast_diameter) + 1, blast_r(unit.blast_diameter), unit.id):
                             move = self.plan_move_to_point(unit.id, unit.pos, neighbour)
                             self.execute_move(unit.id, move, neighbour, tick_number)
                             self.force_bomb_unit_ids.add(unit.id)
@@ -741,7 +751,10 @@ class RulePolicy:
             if self.parser.wall_map[next_pos.x, next_pos.y] and self.bombs_count < 3:
                 if self.is_my_unit_near(unit.pos, equals_is_true=False):
                     continue
-                if not self.parser.check_free(unit.pos, blast_r(unit.blast_diameter) + 1, blast_r(unit.blast_diameter)):
+                if not check_free(self.parser.w, self.parser.h, self.parser.walkable_map, self.parser.danger_map,
+                                  self.parser.units_map, self.parser.enemy_units,
+                                  self.parser.cell_occupation_danger_map, unit.pos, blast_r(unit.blast_diameter) + 1,
+                                  blast_r(unit.blast_diameter)):
                     continue
                 self.execute_action(BombAction(unit.id), self.tick_number)
                 self.bombs_count += 1
@@ -767,7 +780,8 @@ class RulePolicy:
                 continue
             if not is_invincible_next_tick(unit, self.tick_number):
                 continue
-            enemy_i_can_hit_now = self.parser.can_hit_enemy(unit)
+            enemy_i_can_hit_now = can_hit_enemy(self.parser.gs, self.parser.w, self.parser.h, self.parser.wall_map,
+                                                self.parser.enemy_units, unit)
             #EXP2
             if enemy_i_can_hit_now and not is_invincible_next_tick(enemy_i_can_hit_now, self.tick_number):
                 continue # I didn't hit him for reason

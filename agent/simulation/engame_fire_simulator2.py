@@ -1,4 +1,5 @@
 from parsing.parser import *
+from parsing.settings import endgame_fire_base_multiplier, endgame_fire_else
 
 fires_per_step = 2
 

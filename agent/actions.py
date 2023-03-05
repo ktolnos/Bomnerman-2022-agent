@@ -1,6 +1,6 @@
 import random
 from typing import Union
-from parsing.parser import Bomb
+from parsing.bombs import Bomb
 
 
 class Action:
