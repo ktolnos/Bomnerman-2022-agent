@@ -12,7 +12,7 @@ class AStar:
         self.end = end
 
     @staticmethod
-    def h_score(current_node, end):
+    def h_score(current_node: Point, end: Point):
         return manhattan_distance(current_node, end)
 
     def get_neighbors(self, point: Point) -> Iterator[Point]:

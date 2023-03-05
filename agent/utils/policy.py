@@ -1,3 +1,5 @@
+import numpy as np
+
 from utils.game_utils import Unit, blast_r, is_invincible_next_tick, Point
 
 
@@ -48,3 +50,17 @@ def can_hit_enemy(unit, parser) -> Unit:  # returns enemy or none
         if stop_iter:
             break
     return enemy_found
+
+
+def debug_print(state, *args):
+    if state.debug:
+        print("Tick #{}!\n".format(state.tick_number), *args)
+    else:
+        for arg in args:
+            if not isinstance(arg, np.ndarray) or arg.dtype == object:
+                continue
+            repr(arg)
+
+
+def prod_print(state, *args):
+    print("Tick #{}!\n".format(state.tick_number), *args)

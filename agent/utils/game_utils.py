@@ -8,20 +8,23 @@ from typing import Any, List, Tuple, Iterator, NamedTuple
 import numpy as np
 
 
-def point(unit):
+def point(unit: dict) -> Point:
+    """
+    parse unit coordinates from raw unit dict
+    """
     coordinates = unit.get("coordinates")
     return Point(*coordinates)
 
 
-def blast_r(blast_diameter):
+def blast_r(blast_diameter: int) -> int:
     return (blast_diameter + 1) // 2
 
 
-def uid(unit):
+def uid(unit: dict) -> str:
     return unit.get("unit_id")
 
 
-def manhattan_distance(p1, p2):
+def manhattan_distance(p1: Point, p2: Point):
     return abs(p1.x - p2.x) + abs(p1.y - p2.y)
 
 
@@ -36,7 +39,12 @@ class Point(NamedTuple):
         return self.x < other.x
 
 
-def get_neighbours(grid: np.array, center: Point, include: Point = None, include_center=False) -> Iterator[Point]:
+def get_neighbours(
+        grid: np.array,
+        center: Point,
+        include: Point = None,
+        include_center: bool = False
+) -> Iterator[Point]:
     x = center.x
     y = center.y
     neighbors = [

@@ -1,6 +1,6 @@
 from typing import List, Dict
 from actions import Action, DetonateBombAction, MoveAction
-from gamestate import BombState, ParsedGameState, Wall
+from parsing.gamestate import ParsedGameState, BombState, Wall
 from utils.game_utils import Point
 from parser import bomb_arming_ticks
 

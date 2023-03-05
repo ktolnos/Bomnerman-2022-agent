@@ -2,7 +2,7 @@ from copy import deepcopy
 
 from parsing.bombs import Bomb, BombCluster, BombExplosionMapEntry
 from parsing.settings import *
-from utils.grid import draw_cross, check_free
+from utils.grid import draw_cross
 from utils.game_utils import *
 from parsing.gamestate import ParsedGameState, owner_unit_id
 
@@ -315,8 +315,9 @@ class Parser:
             other = self.units_map[x, y]
             if other and other.id != unit.id and other.id in self.my_unit_ids:
                 return False
-            return check_free(self.w, self.h, self.walkable_map, self.danger_map, self.units_map, self.enemy_units,
-                              self.cell_occupation_danger_map, Point(x, y), rad, blast_rad, unit.id)
+
+            from utils.grid import check_free
+            return check_free(self, Point(x, y), rad, blast_rad, unit.id)
 
         check_map = np.zeros_like(self.walkable_map)
         for x, y in np.ndindex(self.all_bomb_explosion_map.shape):
