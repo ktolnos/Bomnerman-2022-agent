@@ -1,21 +1,16 @@
 import asyncio
-from cmath import cos
-from distutils.log import debug
 import time
-import numpy as np
 from collections import deque
-from turtle import forward
-from dataclasses import dataclass
 
 from actions import MoveAction, BombAction, DetonateBombAction, Action
-from astar import AStar, get_neighbours
-from engame_fire_simulator2 import EndgameFireSimulator2
-from least_cost_search import LeastCostSearch
-from parser import *
-from parser import Parser
+from search.astar import AStar
+from simulation.engame_fire_simulator2 import EndgameFireSimulator2
+from search.least_cost_search import LeastCostSearch
+from parsing.parser import *
+from parsing.parser import Parser
 
-from forward import ForwardModel
-from game_utils import Point, is_invincible_next_tick, manhattan_distance, blast_r
+from simulation.forward_model import ForwardModel
+from utils.game_utils import Point, is_invincible_next_tick, manhattan_distance, blast_r
 
 
 @dataclass
@@ -324,7 +319,6 @@ class RulePolicy:
                 continue
 
             bomb_clusters = self.parser.all_bomb_explosion_map_enemy[unit.pos]
-            # print("Placing bomb: checking cluster", unit, bomb_clusters, self.parser.all_bomb_explosion_map_my[unit.pos])
             is_in_enemy_bomb_cluster = False
             if bomb_clusters:
                 for entry in bomb_clusters:
@@ -348,7 +342,8 @@ class RulePolicy:
                         break
             if enemy_to_hit and not is_enemy_invincible:
                 path, cost = AStar(self.parser.danger_map, unit.pos, enemy_to_hit.pos).run()
-                self.debug_print("Placing bomb", unit, "wanna hit", enemy_to_hit, "danger distance is ", cost, "danger map\n", self.parser.danger_map)
+                self.debug_print("Placing bomb", unit, "wanna hit", enemy_to_hit, "danger distance is ",
+                                 cost, "danger map\n", self.parser.danger_map)
                 if cost > 0 and cost != math.inf: # can't come to enemy and not due to my unit
                     self.bombs_count += 1
                     self.debug_print("Placed bomb", unit, "hitting remote", enemy_to_hit)

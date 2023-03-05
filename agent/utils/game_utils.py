@@ -137,6 +137,7 @@ class BombExplosionMapEntry:
     bomb: Bomb
     cluster: BombCluster
 
+
 def is_invincible_next_tick(unit: Unit, tick):
     if not unit.invincibility_last_tick:
         return False

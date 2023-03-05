@@ -1,7 +1,7 @@
 from typing import List, Dict
-from actions import Action, BombAction, DetonateBombAction, MoveAction
+from actions import Action, DetonateBombAction, MoveAction
 from gamestate import BombState, ParsedGameState, Wall
-from space_competition.game_utils import Point
+from utils.game_utils import Point
 from parser import bomb_arming_ticks
 
 
@@ -18,6 +18,7 @@ def generate_possible_actions(gs: ParsedGameState) -> Dict[str, List[Action]]:
             for bomb in gs.units_to_bombs:
                 if bomb.created <= gs.tick - bomb_arming_ticks:
                     actions.append(DetonateBombAction(unit.unit_id, bomb))
+    return actions
 
 
 def add_action_for_pos(unit_id: str, pos: Point, gs: ParsedGameState, action: str, actions: List[Action]):

@@ -1,28 +1,21 @@
-from copy import deepcopy
-from curses.ascii import GS
-from operator import ne
-from tkinter import W
-from actions import Action, MoveAction, BombAction, DetonateBombAction
-
-from gamestate import BombState, Explosion, ParsedGameState, Powerup, UnitState, Wall
-from game_utils import Bomb, Point
-from parser import bomb_arming_ticks
 from collections import defaultdict
+from copy import deepcopy
+
+from actions import Action, MoveAction, BombAction, DetonateBombAction
+from utils.game_utils import Point
+from parsing.gamestate import BombState, Explosion, ParsedGameState, Powerup, UnitState, Wall
 
 bomb_expiry_ticks = 30
 blast_expiry_ticks = 5
-invulnurability_ticks = 5
-# TODO implement endgame fire
-# game_duration_ticks = 200
-# fire_spawn_interval_ticks = 2
+invulnerability_ticks = 5
 
-class ForwardModel():
+
+class ForwardModel:
     def __init__(self) -> None:
         self.move_actions = set()
         self.detonate_actions = set()
         self.bomb_actions = set()
 
-        
     def clear(self):
         self.move_actions.clear()
         self.detonate_actions.clear()
@@ -35,7 +28,7 @@ class ForwardModel():
             self.detonate_actions.add(action)
         else:
             self.move_actions.add(action)
-        
+
     def step(self, game_state: ParsedGameState) -> ParsedGameState:
         new_gs = deepcopy(game_state)
         new_gs.tick += 1
@@ -45,7 +38,7 @@ class ForwardModel():
         self.process_bomb_actions(new_gs)
         self.process_detonate_actions(new_gs)
         self.process_move_actions(new_gs)
-           
+
         return new_gs
 
     def process_bomb_actions(self, new_gs: ParsedGameState):
@@ -57,20 +50,20 @@ class ForwardModel():
             if len(new_gs.units_to_bombs[unit_id]) >= 3:
                 continue
             bomb = BombState(
-                    unit.pos,
-                    unit.blast_r,
-                    action.unit_id,
-                    new_gs.tick,
-                    new_gs.tick + bomb_expiry_ticks
-                )
+                unit.pos,
+                unit.blast_r,
+                action.unit_id,
+                new_gs.tick,
+                new_gs.tick + bomb_expiry_ticks
+            )
             new_gs.map[unit.pos] = bomb
             new_gs.units_to_bombs[unit_id].append(bomb)
 
-    def process_detonate_actions(self, new_gs: ParsedGameState):    
+    def process_detonate_actions(self, new_gs: ParsedGameState):
         for action in self.detonate_actions:
             potential_bomb = new_gs.map[action.bomb.pos]
-            if potential_bomb != None and isinstance(potential_bomb, BombState):
-            #and game_state.tick - potential_bomb.created >= bomb_arming_ticks:
+            if potential_bomb is not None and isinstance(potential_bomb, BombState):
+                # and game_state.tick - potential_bomb.created >= bomb_arming_ticks:
                 detonate_bomb(action.bomb.pos, new_gs)
 
     def process_move_actions(self, new_gs: ParsedGameState):
@@ -89,14 +82,14 @@ class ForwardModel():
             new_pos = get_target_pos(action, unit)
             if intended_positions[new_pos] >= 2:
                 continue
-          
+
             if unit.stunned >= new_gs.tick:
                 continue
             target_obj = new_gs.map[new_pos]
             blast_r = unit.blast_r
             if isinstance(target_obj, Explosion):
                 damage_unit(unit, new_gs)
-            elif target_obj is not None and not isinstance(target_obj, Powerup): # wall or bomb
+            elif target_obj is not None and not isinstance(target_obj, Powerup):  # wall or bomb
                 continue
             unit = new_gs.units_map[unit_id]
             new_gs.units.remove(unit)
@@ -112,6 +105,7 @@ class ForwardModel():
             new_gs.units.add(new_unit)
             new_gs.units_map[unit.unit_id] = new_unit
 
+
 def expire_entities(new_gs: ParsedGameState):
     for point in new_gs.expiry_dict[new_gs.tick]:
         if isinstance(new_gs.map[point], BombState):
@@ -119,6 +113,7 @@ def expire_entities(new_gs: ParsedGameState):
         else:
             new_gs.map[point] = None
     new_gs.expiry_dict.pop(new_gs.tick, None)
+
 
 def pickup_powerups(new_gs: ParsedGameState):
     units_to_replace = dict()
@@ -143,7 +138,7 @@ def pickup_powerups(new_gs: ParsedGameState):
         new_gs.units.add(new_unit)
         new_gs.units_map[unit.unit_id] = new_unit
 
-        
+
 def detonate_bomb(pos: Point, gs: ParsedGameState):
     bomb: BombState = gs.map[pos]
     gs.map[pos] = None
@@ -154,7 +149,7 @@ def detonate_bomb(pos: Point, gs: ParsedGameState):
     for i in range(rad):
         if x + i >= arr.shape[0]:
             break
-        if explode(arr[x+i, y], gs, Point(x+i, y)):
+        if explode(arr[x + i, y], gs, Point(x + i, y)):
             break
     for i in range(rad):
         if x - i < 0:
@@ -172,15 +167,16 @@ def detonate_bomb(pos: Point, gs: ParsedGameState):
         if explode(arr[x, y - i], gs, Point(x, y - i)):
             return False
 
+
 def explode(obj, gs, pos) -> bool:
     for unit in gs.units:
         if unit.pos == pos:
             damage_unit(unit, gs)
     if obj is None or isinstance(obj, Powerup) or isinstance(obj, Explosion):
         gs.map[pos] = Explosion(
-                pos,
-                gs.tick + blast_expiry_ticks
-            )
+            pos,
+            gs.tick + blast_expiry_ticks
+        )
         return False
     if isinstance(obj, Wall):
         hp = obj.hp
@@ -203,13 +199,14 @@ def damage_unit(unit: UnitState, gs: ParsedGameState):
             unit.unit_id,
             unit.agent_id,
             unit.pos,
-            unit.hp-1,
+            unit.hp - 1,
             unit.blast_r,
-            gs.tick + invulnurability_ticks,
+            gs.tick + invulnerability_ticks,
             unit.stunned,
         )
         gs.units.add(new_unit)
         gs.units_map[unit.unit_id] = new_unit
+
 
 def get_target_pos(action: Action, unit: UnitState):
     new_pos = unit.pos

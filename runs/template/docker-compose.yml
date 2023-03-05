@@ -43,12 +43,12 @@ services:
 
     agent-b:
         build:
-            context: ../../../space_competition
+            context: ../../../agent
             dockerfile: Dockerfile.rule.dev
         volumes:
-            - ../../../space_competition:/app
+            - ../../../agent:/app
         environment:
-            - GAME_CONNECTION_STRING=ws://game-engine:3000/?role=agent&agentId=agentB&name=space_competition-agent
+            - GAME_CONNECTION_STRING=ws://game-engine:3000/?role=agent&agentId=agentB&name=agent-agent
         depends_on:
             - game-engine
         deploy:

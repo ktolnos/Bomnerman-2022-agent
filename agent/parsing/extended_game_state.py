@@ -1,8 +1,8 @@
-#full info that is required for policy
-from space_competition.gamestate import ParsedGameState
+# full info that is required for policy
+from parsing.gamestate import ParsedGameState
 
 
-class ExtendedGameState():
+class ExtendedGameState:
     def __init__(self, json) -> None:
         self.gs = ParsedGameState(json)
 

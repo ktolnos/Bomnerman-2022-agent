@@ -1,9 +1,7 @@
 from copy import deepcopy
-from re import L
-from tabnanny import check
-from game_utils import *
 
-owner_unit_id = "unit_id"
+from utils.game_utils import *
+from parsing.gamestate import ParsedGameState, owner_unit_id
 
 search_budget_big = 50
 search_budget_small = 25
@@ -37,12 +35,27 @@ enemy_in_danger_one_cell_discount = -0.5
 move_on_occupied_spot_penalty = my_bomb_starting_danger - 1
 explosion_danger = 100000
 stand_on_bomb_danger = 999
-enclosed_bomb_danger = stand_on_bomb_danger + 5 # shouldn't move to occupied spot
+enclosed_bomb_danger = stand_on_bomb_danger + 5  # shouldn't move to occupied spot
 possibly_enclosed_bomb_danger = stand_on_bomb_danger - 5
 
 close_enemy_danger = 1
 
-from gamestate import ParsedGameState
+
+def merge(bomb_map_entry: BombExplosionMapEntry, other: BombExplosionMapEntry, cluster_to_bombs):
+    other_cluster = other.cluster
+    my_cluster = bomb_map_entry.cluster
+    new_cluster = bomb_map_entry.cluster.merge_with(other.cluster)
+    new_cluster_entries = []
+    for other_cluster_entry in cluster_to_bombs[other_cluster]:
+        other_cluster_entry.cluster = new_cluster
+        new_cluster_entries.append(other_cluster_entry)
+    for cluster_entry in cluster_to_bombs[my_cluster]:
+        cluster_entry.cluster = new_cluster
+        new_cluster_entries.append(cluster_entry)
+    cluster_to_bombs[other_cluster].clear()
+    cluster_to_bombs[my_cluster].clear()
+    cluster_to_bombs[new_cluster] = new_cluster_entries
+
 
 class Parser:
 
@@ -110,9 +123,8 @@ class Parser:
 
         self.cell_occupation_danger_map[:, 0] = close_cell_danger
         self.cell_occupation_danger_map[0, :] = close_cell_danger
-        self.cell_occupation_danger_map[:, h-1] = close_cell_danger
-        self.cell_occupation_danger_map[w-1, :] = close_cell_danger
-
+        self.cell_occupation_danger_map[:, h - 1] = close_cell_danger
+        self.cell_occupation_danger_map[w - 1, :] = close_cell_danger
 
         # a: ammunition
         # b: Bomb
@@ -139,7 +151,7 @@ class Parser:
                 owner = self.unit_id_to_unit.get(owner_id, None)
                 is_owner_stunned = owner and owner.stunned_last_tick and owner.stunned_last_tick >= tick_number
                 is_armed = tick_number - bomb_placed_tick > bomb_arming_ticks and owner and not is_owner_stunned
-                     
+
                 bomb = Bomb(
                     Point(*coordinates),
                     entity.get("blast_diameter"),
@@ -155,7 +167,7 @@ class Parser:
                 if not is_armed:
                     owner_will_be_stunned_next_tick = owner and owner.stunned_last_tick and owner.stunned_last_tick >= tick_number + 1
                     will_be_armed_next_tick = tick_number + 1 - bomb_placed_tick > bomb_arming_ticks and not owner_will_be_stunned_next_tick
-                    if not will_be_armed_next_tick: 
+                    if not will_be_armed_next_tick:
                         base_danger *= unarmed_bomb_danger_modifier_my if is_my_bomb else unarmed_bomb_danger_modifier_enemy
 
                 end_danger = 0
@@ -192,7 +204,7 @@ class Parser:
                     self.endgame_fires += 1
                     self.endgame_fires_map[coordinates] = 1
                 self.danger_map[coordinates] = explosion_danger
-        
+
             if e_type == "m":
                 self.wall_map[coordinates] = math.inf
             if e_type == "w" or e_type == "o":
@@ -200,11 +212,14 @@ class Parser:
 
         self.free_from_endgame_fire = self.w * self.h - self.endgame_fires
         for enemy in self.enemy_units:
-            if self.danger_map[enemy.pos] >= explosion_danger: # enemies can spawn bombs
-               self.raise_danger_for_potential_explosion(self.danger_map, enemy.pos, enemy_potential_bomb_danger, blast_r(enemy.blast_diameter))
-               for neigbour in get_neighbours(self.danger_map, enemy.pos):
+            if self.danger_map[enemy.pos] >= explosion_danger:  # enemies can spawn bombs
+                self.raise_danger_for_potential_explosion(self.danger_map, enemy.pos, enemy_potential_bomb_danger,
+                                                          blast_r(enemy.blast_diameter))
+                for neigbour in get_neighbours(self.danger_map, enemy.pos):
                     if not self.walkable_map[neigbour] and self.danger_map[neigbour] >= explosion_danger:
-                        self.raise_danger_for_potential_explosion(self.danger_map, enemy.pos, enemy_potential_bomb_danger, blast_r(enemy.blast_diameter))
+                        self.raise_danger_for_potential_explosion(self.danger_map, enemy.pos,
+                                                                  enemy_potential_bomb_danger,
+                                                                  blast_r(enemy.blast_diameter))
 
         for bomb in self.bombs:
             for neighbour in get_neighbours(self.danger_map, bomb.pos):
@@ -212,23 +227,16 @@ class Parser:
                     self.danger_map[neighbour] += enclosed_bomb_danger
                     continue
                 if self.cell_occupation_danger_map[neighbour] >= 3 * close_cell_danger - 0.001:
-                    # print("neigbour", neighbour, " of bomb ", bomb, "has cell danger ", self.cell_occupation_danger_map[neighbour])
                     for neigbours_neighbour in get_neighbours(self.danger_map, neighbour):
                         if not self.walkable_map[neigbours_neighbour]:
-                            # print("neigbour", neighbour, " of bomb ", bomb, "has walkable neighbour ", neigbours_neighbour)
                             for n_n_neigbour in get_neighbours(self.danger_map, neigbours_neighbour):
-                                if self.units_map[n_n_neigbour] and self.units_map[n_n_neigbour].id in self.enemy_unit_ids:
+                                if self.units_map[n_n_neigbour] and \
+                                        self.units_map[n_n_neigbour].id in self.enemy_unit_ids:
                                     self.danger_map[neighbour] += possibly_enclosed_bomb_danger
-                                    # print("adding danger", possibly_enclosed_bomb_danger, " to ", neighbour)
                                     break
 
-        # print(self.cell_occupation_danger_map)
-        # print(self.bombs)
-        # print(self.danger_map)
-
         self.process_bombs()
-        #print(self.bombs)
-        #print(self.all_bomb_explosion_map)
+
         for x, y in np.ndindex(self.all_bomb_explosion_map_enemy.shape):
             enemy_entries = self.all_bomb_explosion_map_enemy[x, y]
             my_entries = self.all_bomb_explosion_map_my[x, y]
@@ -243,7 +251,6 @@ class Parser:
                 draw_cross(self.cell_occupation_danger_map, x, y, rad=2, value=close_cell_danger)
             self.danger_map[x, y] += max_danger
 
-
     def process_bombs(self):
         self.process_bombs_helper(self.all_bomb_explosion_map_my, self.my_bombs, self.cluster_to_bombs_my)
         self.process_bombs_helper(self.all_bomb_explosion_map_enemy, self.enemy_bombs, self.cluster_to_bombs_enemy)
@@ -254,7 +261,7 @@ class Parser:
             x, y = bomb.pos
             rad = blast_r(bomb.blast_diameter)
             entry = all_bomb_explosion_map[bomb.pos][0]
-            #now intersection entries are not max of both
+            # now intersection entries are not max of both
             for i in range(1, rad):
                 if x + i >= arr.shape[0]:
                     break
@@ -276,35 +283,19 @@ class Parser:
                 if self.process_bomb(x, y - i, entry, arr, cluster_to_bombs):
                     break
 
-
-    def process_bomb(self, x, y, entry,  all_bomb_explosion_map, cluster_to_bombs) -> bool:
-        """returns true if stamled across other bomb or wall and cycle should end"""
+    def process_bomb(self, x, y, entry, all_bomb_explosion_map, cluster_to_bombs) -> bool:
+        """returns true if stampled across other bomb or wall and cycle should end"""
         other = all_bomb_explosion_map[x, y]
-       
+
         if other and self.has_bomb_map[x, y]:
-            self.merge(entry, other[0], cluster_to_bombs)
-            return False # it seems in latest versions bombs go through  other bombs
-        if self.wall_map[x, y] != 0 and not self.dead_units_map[x, y]: # explosions pass through dead units
+            merge(entry, other[0], cluster_to_bombs)
+            return False  # it seems in latest versions bombs go through  other bombs
+        if self.wall_map[x, y] != 0 and not self.dead_units_map[x, y]:  # explosions pass through dead units
             return True
         if not all_bomb_explosion_map[x, y]:
-            all_bomb_explosion_map[x, y] = [] 
+            all_bomb_explosion_map[x, y] = []
         all_bomb_explosion_map[x, y].append(entry)
         return False
-
-    def merge(self, bomb_map_entry: BombExplosionMapEntry, other: BombExplosionMapEntry, cluster_to_bombs):
-        other_cluster = other.cluster
-        my_cluster = bomb_map_entry.cluster
-        new_cluster = bomb_map_entry.cluster.merge_with(other.cluster)
-        new_cluster_entries = []
-        for other_cluster_entry in cluster_to_bombs[other_cluster]:
-            other_cluster_entry.cluster = new_cluster
-            new_cluster_entries.append(other_cluster_entry)
-        for cluster_entry in cluster_to_bombs[my_cluster]:
-            cluster_entry.cluster = new_cluster
-            new_cluster_entries.append(cluster_entry)
-        cluster_to_bombs[other_cluster].clear()
-        cluster_to_bombs[my_cluster].clear()
-        cluster_to_bombs[new_cluster] = new_cluster_entries
 
     def parse_unit(self, unit_id, target_list, target_ids_list):
         unit = self.units.get(unit_id)
@@ -362,7 +353,7 @@ class Parser:
 
     def check_cell_free(self, x, y, count_any_non_danger_wall_as_free, is_horizontal, ignore_unit_id):
         if x < 0 or x >= self.w or y < 0 or y >= self.h:
-            return False, True # not free and stop iter
+            return False, True  # not free and stop iter
         if self.walkable_map[x, y] != 0 or self.danger_map[x, y] != 0:
             return False, True  # not free and stop iter
         unit = self.units_map[x, y]
@@ -372,17 +363,17 @@ class Parser:
             if manhattan_distance(Point(x, y), enemy.pos) <= 1:
                 return False, True
         if count_any_non_danger_wall_as_free:
-            return True, True # free and stop iter
-        side_wall_1 = Point(x, y+1) if is_horizontal else Point(x+1, y)
+            return True, True  # free and stop iter
+        side_wall_1 = Point(x, y + 1) if is_horizontal else Point(x + 1, y)
         if self.check_side_wall(side_wall_1, ignore_unit_id):
             return True, True
-        side_wall_2 = Point(x, y-1) if is_horizontal else Point(x-1, y)
+        side_wall_2 = Point(x, y - 1) if is_horizontal else Point(x - 1, y)
         if self.check_side_wall(side_wall_2, ignore_unit_id):
             return True, True
 
         if self.cell_occupation_danger_map[x, y] <= close_cell_danger * 1:
-            return True, True # free and stop iter
-        return False, False # not free, look further
+            return True, True  # free and stop iter
+        return False, False  # not free, look further
 
     def check_side_wall(self, point, ignore_unit_id):
         if point.x < 0 or point.y < 0 or point.x >= self.w or point.y >= self.h:
@@ -397,7 +388,7 @@ class Parser:
                 return False
         return True
 
-    def can_hit_enemy(self, unit) -> Unit: # returns enemy or none
+    def can_hit_enemy(self, unit) -> Unit:  # returns enemy or none
         def has_enemy(x, y):
             if x < 0 or x >= self.w or y < 0 or y >= self.h:
                 return None, True
@@ -407,6 +398,7 @@ class Parser:
                 if enemy.pos == Point(x, y):
                     return enemy, False
             return None, False
+
         rad = blast_r(unit.blast_diameter)
         x, y = unit.pos
         enemy_found = None
@@ -452,6 +444,7 @@ class Parser:
                 return True
             arr[x, y] = max(arr[x, y], danger)
             return False
+
         raise_danger(*pos)
         x, y = pos
         for i in range(1, rad):
@@ -470,6 +463,7 @@ class Parser:
     def calculate_not_free_map(self, unit):
         blast_rad = blast_r(unit.blast_diameter)
         rad = blast_rad + 1
+
         def free_checker(x, y):
             if self.walkable_map[x, y] or self.danger_map[x, y]:
                 return False
@@ -477,13 +471,14 @@ class Parser:
             if other and other.id != unit.id and other.id in self.my_unit_ids:
                 return False
             return self.check_free(Point(x, y), rad, blast_rad, unit.id)
+
         check_map = np.zeros_like(self.walkable_map)
         for x, y in np.ndindex(self.all_bomb_explosion_map.shape):
             check_map[x, y] = not free_checker(x, y)
         return check_map
 
 
-def draw_cross(arr, x, y, rad, value, draw_cross_four_times = False):
+def draw_cross(arr, x, y, rad, value, draw_cross_four_times=False):
     arr[x, y] += value * 4 if draw_cross_four_times else value
     for i in range(1, rad):
         if x + i < arr.shape[0]:
@@ -506,4 +501,3 @@ def draw_cross_assign(arr, x, y, rad, value):
             arr[x, y + i] = value
         if y - i >= 0:
             arr[x, y - i] = value
-

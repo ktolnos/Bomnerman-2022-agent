@@ -1,9 +1,8 @@
 import math
-from typing import Dict, Iterator, List, Optional
-
 import numpy as np
 
-from game_utils import Point, PriorityQueue, get_neighbours, manhattan_distance
+from typing import Dict, Iterator, List, Optional
+from utils.game_utils import Point, PriorityQueue, get_neighbours, manhattan_distance
 
 
 class AStar:

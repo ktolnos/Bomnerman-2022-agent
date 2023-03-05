@@ -2,5 +2,6 @@ FROM python:3.8-bullseye
 
 COPY ./requirements.txt /app/requirements.txt
 WORKDIR /app
+ENV PYTHONPATH=/app
 RUN python -m pip install -r requirements.txt
-ENTRYPOINT PYTHONUNBUFFERED=1 python empty_runner.py
+ENTRYPOINT PYTHONUNBUFFERED=1 python rule/rule_runner.py

@@ -1,14 +1,18 @@
 import math
-from typing import Dict, Iterator, List, Optional
+from typing import Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 
-from game_utils import Point, PriorityQueue, get_neighbours
+from utils.game_utils import Point, PriorityQueue, get_neighbours
 
 exclude_point_stay_cost = 10
+
+
 class LeastCostSearch:
 
-    def __init__(self, grid: np.ndarray, start: Point, exclude_points=set(), search_budget: int = 100):
+    def __init__(self, grid: np.ndarray, start: Point, exclude_points=None, search_budget: int = 100):
+        if exclude_points is None:
+            exclude_points = set()
         self.grid = grid
         self.start = start
         self.search_budget = search_budget
@@ -17,7 +21,7 @@ class LeastCostSearch:
     def get_neighbors(self, point: Point) -> Iterator[Point]:
         return get_neighbours(self.grid, point)
 
-    def run(self, horizon: int) -> List[Point]:
+    def run(self, horizon: int) -> Tuple[List[Point], float]:
         frontier = PriorityQueue()
         frontier.put(self.start, 0)
         came_from: Dict[Point, Optional[Point]] = dict()

@@ -1,10 +1,13 @@
 from runner import Runner
 
-class EmptyPolicy():
+
+class EmptyPolicy:
     def init(self, gs):
         pass
+
     def execute_actions(self, tick, gs):
         pass
+
 
 def main():
     Runner(EmptyPolicy())

@@ -1,5 +1,5 @@
 from runner import Runner
-from rule_policy import RulePolicy
+from rule.rule_policy import RulePolicy
 
 
 def main():

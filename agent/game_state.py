@@ -1,10 +1,22 @@
 import json
-from typing import Union
+from typing import List
 
 import websockets
 from websockets.client import WebSocketClientProtocol
 
-_move_set = set(("up", "down", "left", "right"))
+_move_set = {"up", "down", "left", "right"}
+
+
+def _get_new_unit_coordinates(coordinates, move_action) -> List[int]:
+    [x, y] = coordinates
+    if move_action == "up":
+        return [x, y+1]
+    elif move_action == "down":
+        return [x, y-1]
+    elif move_action == "right":
+        return [x+1, y]
+    elif move_action == "left":
+        return [x-1, y]
 
 
 class GameState:
@@ -134,7 +146,7 @@ class GameState:
         if action_type == "move":
             move = action_packet.get("move")
             if move in _move_set:
-                new_coordinates = self._get_new_unit_coordinates(
+                new_coordinates = _get_new_unit_coordinates(
                     coordinates, move)
                 self.state["unit_state"][unit_id]["coordinates"] = new_coordinates
         elif action_type == "bomb":
@@ -145,14 +157,3 @@ class GameState:
             pass
         else:
             print(f"Unhandled agent action recieved: {action_type}")
-
-    def _get_new_unit_coordinates(self, coordinates, move_action) -> Union[int, int]:
-        [x, y] = coordinates
-        if move_action == "up":
-            return [x, y+1]
-        elif move_action == "down":
-            return [x, y-1]
-        elif move_action == "right":
-            return [x+1, y]
-        elif move_action == "left":
-            return [x-1, y]

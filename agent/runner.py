@@ -1,10 +1,8 @@
 import asyncio
 import os
-from concurrent.futures._base import Future
-from concurrent.futures.thread import ThreadPoolExecutor
-
+import numpy as np
 from game_state import GameState
-from rule_policy import Ticker, np
+
 
 uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"
