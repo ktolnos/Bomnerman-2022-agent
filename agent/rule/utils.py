@@ -1,5 +1,5 @@
 from parsing.settings import explosion_danger
-from rule.rule_policy_state import RulePolicyState
+from rule.state.rule_policy_state import RulePolicyState
 from utils.game_utils import manhattan_distance, Point
 from utils.policy import debug_print
 

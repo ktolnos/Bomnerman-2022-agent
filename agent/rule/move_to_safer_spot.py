@@ -5,7 +5,7 @@ import numpy as np
 from parsing.settings import *
 from rule.closest_to_center_discount import add_closest_to_center_enemy_discount
 from rule.execute_action import execute_move, plan_move
-from rule.rule_policy_state import RulePolicyState
+from rule.state.rule_policy_state import RulePolicyState
 from search.least_cost_search import LeastCostSearch
 from utils.game_utils import get_neighbours, Unit
 from utils.grid import draw_cross

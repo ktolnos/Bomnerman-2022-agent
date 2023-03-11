@@ -1,9 +1,9 @@
 from collections import deque
 
 from parsing.parser import Parser
-from rule.blocked_locations import compute_blocked_locations
-from rule.closest_to_center import calculate_closest_to_center
-from rule.state_map import compute_state_map
+from rule.state.blocked_locations import compute_blocked_locations
+from rule.state.closest_to_center import calculate_closest_to_center
+from rule.state.state_map import compute_state_map
 from simulation.engame_fire_simulator2 import EndgameFireSimulator2
 from simulation.forward_model import ForwardModel
 

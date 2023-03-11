@@ -3,7 +3,7 @@ import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rule.rule_policy_state import RulePolicyState
+    from rule.state.rule_policy_state import RulePolicyState
 from utils.game_utils import manhattan_distance
 from utils.policy import debug_print
 

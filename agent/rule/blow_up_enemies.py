@@ -3,7 +3,7 @@ from typing import List
 from actions import DetonateBombAction
 from parsing.bombs import BombExplosionMapEntry
 from rule.execute_action import execute_action
-from rule.rule_policy_state import RulePolicyState
+from rule.state.rule_policy_state import RulePolicyState
 from rule.utils import mark_detonate_bomb_danger
 from utils.game_utils import Point, blast_r
 from utils.policy import debug_print

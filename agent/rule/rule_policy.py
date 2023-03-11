@@ -6,7 +6,7 @@ from rule.blow_up_path_to_center import blow_up_path_to_center
 from rule.move_to_different_map_parts import move_units_to_different_map_parts
 from rule.move_to_safer_spot import move_all_to_safer_spot
 from rule.place_bombs import place_bombs
-from rule.rule_policy_state import RulePolicyState
+from rule.state.rule_policy_state import RulePolicyState
 from rule.suicide_bomb import suicide_bomb
 from utils.policy import prod_print
 

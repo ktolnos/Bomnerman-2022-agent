@@ -7,7 +7,7 @@ from parsing.settings import close_cell_danger
 from rule.blow_up_enemies import blow_up_if_worth_it
 from rule.execute_action import execute_move, execute_action, plan_move_to_point
 from rule.move_to_safer_spot import move_to_safer_spot, move_to_safer_spot_if_in_danger
-from rule.rule_policy_state import RulePolicyState
+from rule.state.rule_policy_state import RulePolicyState
 from rule.utils import is_my_unit_near
 from search.astar import AStar
 from utils.game_utils import manhattan_distance, blast_r, get_neighbours, Point

@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from actions import Action, MoveAction
-from rule.rule_policy_state import RulePolicyState
+from rule.state.rule_policy_state import RulePolicyState
 from utils.game_utils import Point
 
 

@@ -3,7 +3,7 @@ import math
 from actions import BombAction
 from parsing.settings import explosion_danger
 from rule.execute_action import execute_action
-from rule.rule_policy_state import RulePolicyState
+from rule.state.rule_policy_state import RulePolicyState
 from rule.utils import is_my_unit_near, mark_detonate_bomb_danger
 from search.astar import AStar
 from utils.game_utils import is_invincible_next_tick, blast_r, manhattan_distance

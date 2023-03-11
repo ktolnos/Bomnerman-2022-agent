@@ -1,7 +1,7 @@
 import numpy as np
 
 from parsing.gamestate import Powerup
-from rule.rule_policy_state import RulePolicyState
+from rule.state.rule_policy_state import RulePolicyState
 
 
 def check_forward_model(state: RulePolicyState):

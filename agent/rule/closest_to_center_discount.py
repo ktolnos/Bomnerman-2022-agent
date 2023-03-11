@@ -1,5 +1,5 @@
 from parsing.settings import *
-from rule.rule_policy_state import RulePolicyState
+from rule.state.rule_policy_state import RulePolicyState
 from rule.utils import is_my_unit_near
 from utils.game_utils import Unit, Point, get_neighbours
 from utils.policy import debug_print
