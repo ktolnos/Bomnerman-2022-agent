@@ -1,6 +1,4 @@
-[![Engine Version](https://img.shields.io/badge/engine%20ver.-2381-blue)](#release-notes)
-
-# Bomberland engine + starter kits
+# Bomberland 2022 2nd place agent.
 
 ## About
 
@@ -8,13 +6,10 @@
 
 Teams build intelligent agents using strategies from tree search to deep reinforcement learning. The goal is to compete in a 2D grid world collecting power-ups and placing explosives to take your opponent down.
 
-This repo contains starter kits for working with the game engine + the engine source!
+This repo contains the source of the Eop's agent which finished 2nd on 2022 season.
+Earlier version that finished 1st in 2021 season can be found [here](https://github.com/ktolnos/Bomberland-AI-challange).
 
 ![Bomberland multi-agent environment](./engine/bomberland-ui/src/source-filesystem/docs/2-environment-overview/bomberland-preview.gif "Bomberland")
-
-## Contributing
-
-Contributions are always welcome, see our contribution guidelines [here](CONTRIBUTING.md)
 
 ## Usage
 
@@ -28,30 +23,12 @@ See: [Documentation](https://www.gocoder.one/docs)
 ```
 docker-compose up --abort-on-container-exit --force-recreate
 ```
+## Code overview
 
-### Open AI gym wrapper
-
-`docker-compose -f open-ai-gym-wrapper-compose.yml up --force-recreate --abort-on-container-exit`
-
-## Starter kits
-
-| Kit                 | Link                                                                           | Description                                        | Up-to-date? | Contributed by                          |
-| ------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------- | ----------- | --------------------------------------- |
-| Python3             | [Link](https://github.com/CoderOneHQ/bomberland/tree/master/agents/python3)    | Basic Python3 starter                              | ✅          | Coder One                               |
-| Python3-fwd         | [Link](https://github.com/CoderOneHQ/bomberland/tree/master/agents/python3)    | Includes example for using forward model simulator | ✅          | Coder One                               |
-| Python3-gym-wrapper | [Link](https://github.com/CoderOneHQ/bomberland/tree/master/agents/python3)    | Open AI Gym wrapper                                | ✅          | Coder One                               |
-| TypeScript          | [Link](https://github.com/CoderOneHQ/bomberland/tree/master/agents/typescript) | Basic TypeScript starter                           | ✅          | Coder One                               |
-| TypeScript-fwd      | [Link](https://github.com/CoderOneHQ/bomberland/tree/master/agents/typescript) | Includes example for using forward model simulator | ❌          | Coder One                               |
-| Go                  | [Link](https://github.com/CoderOneHQ/bomberland/tree/master/agents/go)         | Basic Go starter                                   | ❌          | [dtitov](https://github.com/dtitov)     |
-| C++                 | [Link](https://github.com/CoderOneHQ/bomberland/tree/master/agents/cpp)        | Basic C++ starter                                  | ❌          | [jfbogusz](https://github.com/jfbogusz) |
-| Rust                | [Link](https://github.com/CoderOneHQ/bomberland/tree/master/agents/rust)       | Basic Rust starter                                 | ❌          | [K-JBoon](https://github.com/K-JBoon)   |
-
-## Discussion and Questions
-
-Join our community on [Discord](https://discord.gg/Hd8TRFKsDa).
-
-Please let us know of any bugs or suggestions by [raising an Issue](https://github.com/CoderOneHQ/starter-kits/issues).
-
-## Changelog
-
-See changelog [here](CHANGELOG.md)
+Agent's main logic is called from the [`rule_policy.py`](./agent/rule/rule_policy.py). 
+- All agent's files are in [agent/](agent/) folder. 
+- <a>agent/parsing/</a> folder contains code for parsing json state object into data classes and populating different maps (e.g. wall map).
+- <a>agent/rule/</a> folder contains code for the main policy, including all the strategies. 
+    - <a>agent/rule/state</a> contains logic for parsing and updating game state related to this policy.
+- <a>agent/search/</a> contains implementations and tests for A\* search and least cost search. The main idea of the latter is to find a trajectory of the fixed length that will have the lowest cost. This allows to avoid dengerous tiles and move towards the sweetest spots.
+- <a>agent/simulation/</a> contains code for the simlified forward simulation of the game environment.
