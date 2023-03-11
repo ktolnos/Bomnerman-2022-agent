@@ -1,1 +1,0 @@
-export type PRNG = () => number;
