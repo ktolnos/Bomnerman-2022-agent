@@ -7,5 +7,6 @@ engine/bomberland-library/lib
 engine/bomberland-library/coverage
 runs/tmp
 runs/out
+runs/game-server-1741-osx
 .vscode
 .idea
