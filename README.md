@@ -27,8 +27,8 @@ docker-compose up --abort-on-container-exit --force-recreate
 
 Agent's main logic is called from the [`rule_policy.py`](./agent/rule/rule_policy.py). 
 - All agent's files are in [agent/](agent/) folder. 
-- <a>agent/parsing/</a> folder contains code for parsing json state object into data classes and populating different maps (e.g. wall map).
-- <a>agent/rule/</a> folder contains code for the main policy, including all the strategies. 
-    - <a>agent/rule/state</a> contains logic for parsing and updating game state related to this policy.
-- <a>agent/search/</a> contains implementations and tests for A\* search and least cost search. The main idea of the latter is to find a trajectory of the fixed length that will have the lowest cost. This allows to avoid dengerous tiles and move towards the sweetest spots.
-- <a>agent/simulation/</a> contains code for the simlified forward simulation of the game environment.
+- [agent/parsing/](agent/parsing/) folder contains code for parsing json state object into data classes and populating different maps (e.g. wall map).
+- [agent/rule/](agent/rule/) folder contains code for the main policy, including all the strategies. 
+    - [agent/rule/state/](agent/rule/state/) contains logic for parsing and updating game state related to this policy.
+- [agent/search/](agent/search/) contains implementations and tests for an A\* search and a least cost search. The main idea of the latter is to find a trajectory of the fixed length that will have the lowest cost. This allows to avoid dengerous tiles and move towards the sweetest spots.
+- [agent/simulation/](agent/simulation/) contains code for the simlified forward simulation of the game environment.
