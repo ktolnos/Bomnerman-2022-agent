@@ -1,6 +1,7 @@
 import asyncio
 
-from actions import MoveAction
+from actions import MoveAction, Action
+from game_state import GameState
 from rule.blow_up_enemies import blow_up_enemies
 from rule.blow_up_path_to_center import blow_up_path_to_center
 from rule.move_to_different_map_parts import move_units_to_different_map_parts
@@ -19,11 +20,11 @@ class RulePolicy:
     def reset(self):
         self.state = RulePolicyState()
 
-    def init(self, client):
+    def init(self, client: GameState):
         self.state.client = client
         self.state.loop = asyncio.get_event_loop()
 
-    def execute_actions(self, tick_number, game_state):
+    def execute_actions(self, tick_number: int, game_state: GameState):
         self.state.update(tick_number, game_state)
 
         blow_up_enemies(self.state)
@@ -66,6 +67,6 @@ class RulePolicy:
                 postpned_actions.remove(action)
             executed_actions.clear()
 
-    async def __send_action_async_impl(self, action, tick_number):
+    async def __send_action_async_impl(self, action: Action, tick_number: int):
         await action.send(self.state.client)
         prod_print(self.state, "Sent action {action} on tick {tick}!".format(action=action, tick=tick_number))
